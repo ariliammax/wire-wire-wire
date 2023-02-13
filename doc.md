@@ -16,3 +16,8 @@ git rebase common
 
 to get any updates from `common` branch.
 
+We shouldn't want to deal with the hassle of adding a new git account to our
+command line (at least, Liam doesn't), so just use your personal account to
+make the changes on each of `common`, `wire`, and `grpc`, then the
+`ariliammax` account will make the final brush-ups and PRs etc.
+
