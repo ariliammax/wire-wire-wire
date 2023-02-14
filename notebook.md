@@ -126,18 +126,23 @@ After a little trial and error, we were succesfully able to achieve multiple
 connections without blocking, using threads.
 
 Now we're deciding what to do next:
-    - We understand there will have to be a shared state in the server that has to be 'locked'
-    - We are thinking of representing our database as global array of structs in memory
-    - We want to decide what our datastructures are tonight
+
+- We understand there will have to be a shared state in the server that has to
+be 'locked'.
+
+- We are thinking of representing our database as global array of structs in
+memory.
+
+- We want to decide what our data structures are tonight.
 
 ###### Shared resource testing
 
 We quickly want to test how multiple threads interact with a shared resource. 
 Liam suggested that in the past he's discovered, depending on the library, 
-threads might make copies of shared resources instead of accessing the same shared 
-resource... 
+threads might make copies of shared resources instead of accessing the same
+shared  resource... 
 
 Looks like this library does not make a copy, which is what we want!
 
-We're debating the differences between coarse grained and fine grained lock. We've decied that
-the granularity of the lock will depend on the action.
+We're debating the differences between coarse grained and fine grained lock.
+We've decied that the granularity of the lock will depend on the action.
