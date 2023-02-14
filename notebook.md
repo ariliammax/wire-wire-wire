@@ -112,3 +112,32 @@ about interweaving too, too much).
 when/if clients disconnected. So we'll just do threading now.
 
 Now, it's Ari's turn to start scribing. ~ _Liam_
+
+We were looking at the benefits/drawbacks of using processes vs. threads
+to handle multiple clients, in a non-blocking way. We decided to use
+threads, since that is more commonly used for server-client models and will
+allow us to easily access the shared server state without the use of a 
+socket or pipe, since threads are created in the same address space.
+
+One observation we made is that we don't have to keep track of the threads
+since the clients are stateless.
+
+After a little trial and error, we were succesfully able to achieve multiple 
+connections without blocking, using threads.
+
+Now we're deciding what to do next:
+    - We understand there will have to be a shared state in the server that has to be 'locked'
+    - We are thinking of representing our database as global array of structs in memory
+    - We want to decide what our datastructures are tonight
+
+###### Shared resource testing
+
+We quickly want to test how multiple threads interact with a shared resource. 
+Liam suggested that in the past he's discovered, depending on the library, 
+threads might make copies of shared resources instead of accessing the same shared 
+resource... 
+
+Looks like this library does not make a copy, which is what we want!
+
+We're debating the differences between coarse grained and fine grained lock. We've decied that
+the granularity of the lock will depend on the action.
