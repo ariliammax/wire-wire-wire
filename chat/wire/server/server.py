@@ -1,11 +1,7 @@
+from chat.common.config import Config
+
 import socket
-
 import threading
-
-HOST = "10.250.25.88"
-PORT = 8080
-TIMEOUT = 1
-
 
 class A:
     def __init__(self):
@@ -14,9 +10,7 @@ class A:
     def update(self):
         self.a += 1
 
-
 theA = A()
-
 
 def handle_connection(connection, address):
     print(theA.a)
@@ -30,12 +24,10 @@ def handle_connection(connection, address):
         print("TEST")
     connection.sendall(data)
 
-
-
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-    s.bind((HOST, PORT))
+    s.bind((Config.HOST, Config.PORT))
     s.listen()
-    s.settimeout(TIMEOUT)
+    s.settimeout(Config.TIMEOUT)
     threads = []
     while True:
         try:
