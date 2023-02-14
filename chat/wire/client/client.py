@@ -1,7 +1,7 @@
 import socket
 
-HOST = "104.28.39.32"
-PORT = 65432
+HOST = "10.250.25.88"
+PORT = 8080
 
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     s.connect((HOST, PORT))
@@ -9,4 +9,4 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     data = s.recv(1024)
     data = data.decode("utf-8")
 
-print(f"Recieved {data!r}")
+print(f"Recv-ed {data!r}")
