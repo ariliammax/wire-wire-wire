@@ -146,3 +146,92 @@ Looks like this library does not make a copy, which is what we want!
 
 We're debating the differences between coarse grained and fine grained lock.
 We've decied that the granularity of the lock will depend on the action.
+
+_"That's all for now folks!"_ ~ _Ari_
+
+#### Towards object, data models and the protocol
+
+We'd like to get an outline of our relevant (data, object) models, the
+operations, and the wire protocol. We recall the specification given:
+
+1. Create an account. You must supply a unique user name.
+
+2. List accounts (or a subset of the accounts, by text wildcard)
+
+3. Send a message to a recipient. If the recipient is logged in, deliver
+immediately; otherwise queue the message and deliver on demand.
+If the message is sent to someone who isn't a user, return an error message
+
+4. Deliver undelivered messages to a particular user.
+
+5. Delete an account. You will need to specify the semantics of what happens
+if you attempt to delete an account that contains undelivered message.
+
+##### Data models
+
+This is pretty simple, there's just two primitives, and these are their
+fields:
+
+1. `Account`: `username : str` (self explanatory), `logged_in : bool`,
+dictates whether sent messages are to be delivered immediately or not.
+
+After some debate, we don't include a `connection`, since the gRPC will not
+use exactly that (it's wire specific). We will eventually have an extension
+`WireAccount` that includes one (and similarly, perhaps a `gRPCAccount`.
+
+2. `Message`: `sender_username : str`, `recipient_username : str`,
+`message : str`, `time : int`, and `delivered : bool`.
+
+Not much to be said about that, except that `time` is a nice UI perk.
+Saying something would be a waste (this is a quine).
+
+Now, we will need object models. There was some debate whether we use the
+data models (and make attributes optional or not depending on whether the
+operation/object uses the field), or create different object models for each
+operation's request and response to clearly illustrate the specific wire
+protocol.
+
+For the sake of clarity, at the cost of verbosity, we opt to create separate
+models for each operation's request and response. So it will be useful to
+review the operations.
+
+###### Operations
+
+We replace the `Response` vs `Request` tedium with "gets" and "gives".
+
+1a. `CreateAccount`: gives `Account.username`, gets maybe error `str`.
+
+1b. `LoginAccount`: gives `Account.username`, gets maybe error `str`.
+
+Max has the point these are the same, but we decided it was most readable to
+disentangle them.
+
+2. `ListAccounts`: gives `str`, gets `[Account]`.
+
+3. `SendMessage`: gives `Message.` everything except `.time` and `.delivered`,
+gets maybe error `str`.
+
+4. `DeliverUndeliveredMessages`: gives `Account.username`, gets `[Message.`
+everything except `.delivered` `]`.
+
+5. `DeleteAccount`: gives `Account.username`, gets maybe error `str`.
+
+Liam will make nice auto-generating code for this and the data models, so
+it will be explicit but not verbose (and will make the overall wire protocol
+self contained hopefully).
+
+Our next steps will be actually building these object models,
+their (de)serialization, object to data transformations,
+a 'database' of the data models, and then the logic on both ends.
+
+The last one depends on the preceeding two, the penultimate doesn't depend
+on the object models. So Liam will do the autogenerating object models,
+Max and Ari will do the database, they will reconvene to do the other
+outstanding (de)serialization and logic on both ends later.
+
+Now it is Liam's bedtime.
+
+...
+
+### 2023.02.14
+
