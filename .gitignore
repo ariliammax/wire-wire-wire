@@ -1,0 +1,16 @@
+# virtualenv folders
+bin/
+lib/
+pip-selfcheck.json
+share/
+
+# vim edits
+*.swp
+*.swo
+*.sw*
+
+# venv
+*pyvenv.cfg
+
+# misc sudo calls
+lib64
