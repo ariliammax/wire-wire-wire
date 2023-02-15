@@ -27,18 +27,21 @@ def handle_connection(connection, address):
         print("TEST")
     connection.sendall(data)
 
-with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-    s.bind((Config.HOST, Config.PORT))
-    s.listen()
-    s.settimeout(Config.TIMEOUT)
-    threads = []
-    while True:
-        try:
-            connection, address = s.accept()
-            # handle_connection(connection, address)
-            thread = threading.Thread(target=handle_connection, args=[connection, address])
-            thread.start()
-            threads.append(thread)
-        except TimeoutError:
-            pass
-    s.settimeout(None)
+
+if __name__ == '__main__':
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind((Config.HOST, Config.PORT))
+        s.listen()
+        s.settimeout(Config.TIMEOUT)
+        threads = []
+        while True:
+            try:
+                connection, address = s.accept()
+                # handle_connection(connection, address)
+                thread = threading.Thread(target=handle_connection,
+                                          args=[connection, address])
+                thread.start()
+                threads.append(thread)
+            except TimeoutError:
+                pass
+        s.settimeout(None)
