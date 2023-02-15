@@ -3,6 +3,7 @@
 
 from typing import Optional
 
+
 # DATA MODEL
 
 class Account(object):
