@@ -8,6 +8,4 @@ setup(name='chat',
                 'wire.server'],  # eventually also 
       package_dir={'common': 'chat/common/',
                    'wire': 'chat/wire/'},
-      package_dir={'common': 'chat/common/',
-                   'wire': 'chat/wire/'},
       install_requires=[])
