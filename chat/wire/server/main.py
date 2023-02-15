@@ -1,47 +1,57 @@
 # main.py
 # in chat.wire.server
 
-from chat.common.config import Config
+#from chat.common.config import Config
+class Config:
+    HOST = "10.250.25.88"
+    PORT = 8080
+    TIMEOUT = 1
+
+from database import Database
+
+from enum import Enum
+class Opcode(Enum):
+    LOGIN_ACCOUNT = 0
+    CREATE_ACCOUNT = 1
+    LIST_ACCOUNTS = 2
+    SEND_MESSAGE = 3
+    DELIVER_UNDELIVERED_MESSAGES = 4
+    DELETE_ACCOUNT = 5
 
 import socket
 import threading
 
-class A:
-    def __init__(self):
-        self.a = 0
-
-    def update(self):
-        self.a += 1
-
-theA = A()
-
 def handle_connection(connection, address):
-    print(theA.a)
-    theA.update()
-    data = connection.recv(1024)
+    request = connection.recv(1024).decode("utf-8")
+    response = "\n"
 
-    import time
-    time.sleep(2)
-    print(theA.a)
-    if not data:
-        print("TEST")
-    connection.sendall(data)
+    arguments = request.split(",")
+    opcode = int(arguments[0])
 
+    if opcode == Opcode.CREATE_ACCOUNT.value:
+        username = arguments[1]
+        if username in Database.accounts:
+            response = "ERROR"
+        else:
+            Database.accounts.append(username)
+
+    print(Database.accounts)
+
+    connection.sendall(response.encode("utf-8"))
 
 if __name__ == '__main__':
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind((Config.HOST, Config.PORT))
         s.listen()
-        s.settimeout(Config.TIMEOUT)
         threads = []
         while True:
             try:
+                s.settimeout(Config.TIMEOUT)
                 connection, address = s.accept()
-                # handle_connection(connection, address)
+                s.settimeout(None)
                 thread = threading.Thread(target=handle_connection,
                                           args=[connection, address])
                 thread.start()
                 threads.append(thread)
             except TimeoutError:
                 pass
-        s.settimeout(None)
