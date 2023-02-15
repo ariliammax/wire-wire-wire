@@ -1,3 +1,6 @@
+# models.py
+# in chat.common
+
 from typing import Optional
 
 # DATA MODEL
