@@ -22,22 +22,23 @@ import socket
 import threading
 
 def handle_connection(connection, address):
-    request = connection.recv(1024).decode("utf-8")
-    response = "\n"
+    while True:
+        request = connection.recv(1024).decode("utf-8")
+        response = " "
 
-    arguments = request.split(",")
-    opcode = int(arguments[0])
+        arguments = request.split(",")
+        opcode = int(arguments[0])
 
-    if opcode == Opcode.CREATE_ACCOUNT.value:
-        username = arguments[1]
-        if username in Database.accounts:
-            response = "ERROR"
-        else:
-            Database.accounts.append(username)
+        if opcode == Opcode.CREATE_ACCOUNT.value:
+            username = arguments[1]
+            if username in Database.accounts:
+                response = "ERROR"
+            else:
+                Database.accounts.append(username)
+        elif opcode == Opcode.LIST_ACCOUNTS.value:
+            response = ",".join(Database.accounts)
 
-    print(Database.accounts)
-
-    connection.sendall(response.encode("utf-8"))
+        connection.sendall(response.encode("utf-8"))
 
 if __name__ == '__main__':
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
