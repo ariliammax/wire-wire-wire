@@ -111,7 +111,9 @@ about interweaving too, too much).
 - We were prototyping without threading, but that got annoying on telling
 when/if clients disconnected. So we'll just do threading now.
 
-Now, it's Ari's turn to start scribing. ~ _Liam_
+Now, it's Ari's turn to start scribing. ~ _LM_
+
+Hey, Ari here!
 
 We were looking at the benefits/drawbacks of using processes vs. threads
 to handle multiple clients, in a non-blocking way. We decided to use
@@ -147,7 +149,7 @@ Looks like this library does not make a copy, which is what we want!
 We're debating the differences between coarse grained and fine grained lock.
 We've decied that the granularity of the lock will depend on the action.
 
-_"That's all for now folks!"_ ~ _Ari_
+_"That's all for now folks!"_ ~ _AT_
 
 #### Towards object, data models and the protocol
 
@@ -233,5 +235,29 @@ Now it is Liam's bedtime.
 
 ...
 
-### 2023.02.14
+### 2023.02.15
+
+Ari, here. Let's get a-rockin' !
+
+As a summary, this is what we have now re. functionality: 
+    - A client can connect to the server
+    - A client can make a request and the server will echo the request back
+    - We can also support multiple clients
+
+We want to start building out the 'database', the datastructures kept on the server. So 
+we're gonna begin by supporting client requests to create a User. The payload of the request 
+should include simply the username. 
+
+When the server gets the client's request, the server will add the message-- the username--
+to a list of usernames.
+
+We want to prompt the client when it connects for a username, so we will use python's
+`input()` command.
+
+We decide to transition to using a set instead of a list so someone logging in with the same
+username will not create two copies of the username in the datastructure.
+
+Everything is working as expected, so now as we prepare to support more functions, we will
+start creating opcodes for the multiple operations. The opcodes will be one byte and
+represented as an enum.
 
