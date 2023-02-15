@@ -1,3 +1,6 @@
+# main.py
+# in chat.wire.client
+
 from chat.common.config import Config
 
 import socket
