@@ -14,3 +14,5 @@ share/
 
 # misc sudo calls
 lib64
+
+*.pyc
