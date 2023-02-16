@@ -1,119 +1,54 @@
 # models.py
 # in chat.common
 
-from chat.common.util import interface, class_from_proto
-from enum import Enum
-from typing import Optional
+from chat.common.util import model_from_fields
 
 
 # DATA MODELS
 
-class AccountInterface(interface):
-    class _fields_enum(Enum):
-        logged_in = bool
-        username = str
+
+Account = model_from_fields(logged_in=bool,
+                            username=str)
 
 
-# TODO: make it actually work
-AccountFancy = class_from_proto(AccountInterface)
+Message = model_from_fields(delivered=bool,
+                            message=str,
+                            recipient_username=str,
+                            sender_username=str,
+                            time=int)
 
 
-class Account(object):
-    def __init__(self):
-        self._logged_in: bool = False
-        self._username: str = ""
+# OBJECT MODEL... TODO: add "inheritence" in chat.common.util.model_from_
+BaseRequest = model_from_fields()
+BaseResponse = model_from_fields(error=str)
 
-
-class Message(object):
-    def __init__(self):
-        self._delivered: bool = False
-        self._message: str = ""
-        self._recipient_username: str = ""
-        self._sender_username: str = ""
-        self._time: int = 0
-
-# OBJECT MODEL
-
-
-class BaseRequest(object):
-    def __init__(self):
-        pass
-
-
-class BaseResponse(object):
-    def __init__(self):
-        self._error: Optional[str] = None
 
 # Function 0: Log In Account
-
-
-class LogInAccountRequest(BaseRequest):
-    def __init__(self):
-        self._username: str = ""
-
-
-class LogInAccountResponse(BaseResponse):
-    def __init__(self):
-        pass
+LogInAccountRequest = model_from_fields(username=str)
+LogInAccountResponse = model_from_fields()
 
 # Function 1: Create Account
+CreateAccountRequest = model_from_fields(username=str)
+CreateAccountResponse = model_from_fields()
 
-
-class CreateAccountRequest(BaseRequest):
-    def __init__(self):
-        self._username: str = ""
-
-
-class CreateAccountResponse(BaseResponse):
-    def __init__(self):
-        pass
 
 # Function 2: List Accounts
+ListAccountsRequest = model_from_fields()
+ListAccountsResponse = model_from_fields(accounts=list)
 
-
-class ListAccountsRequest(BaseRequest):
-    def __init__(self):
-        pass
-
-
-class ListAccountsResponse(BaseResponse):
-    def __init__(self):
-        self._accounts: list[Account] = []
 
 # Function 3: Send Message
+SendMessageRequest = model_from_fields(message=str,
+                                       recipient_username=str,
+                                       sender_username=str)
+SendMessageResponse = model_from_fields()
 
-
-class SendMessageRequest(BaseRequest):
-    def __init__(self):
-        self._message: str = ""
-        self._recipient_username: str = ""
-        self._sender_username: str = ""
-
-
-class SendMessageResponse(BaseResponse):
-    def __init__(self):
-        pass
 
 # Function 4: Deliver Undelivered Messages
+DeliverUndeliveredMessagesRequest = model_from_fields(username=str)
+DeliverUndeliveredMessagesResponse = model_from_fields(messages=list)
 
-
-class DeliverUndeliveredMessagesRequest(BaseRequest):
-    def __init__(self):
-        self._username: str = ""
-
-
-class DeliverUndeliveredMessagesResponse(BaseResponse):
-    def __init__(self):
-        self._messages: list[Message] = []
 
 # Function 5: Delete Account
-
-
-class DeleteAccountRequest(BaseRequest):
-    def __init__(self):
-        self._username: str = ""
-
-
-class DeleteAccountResponse(BaseResponse):
-    def __init__(self):
-        pass
+DeleteAccountRequest = model_from_fields()
+DeleteAccountResponse = model_from_fields()
