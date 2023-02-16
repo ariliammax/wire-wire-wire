@@ -6,19 +6,23 @@ from enum import Enum
 from typing import Optional
 
 
-## DATA MODELS
+# DATA MODELS
 
 class AccountInterface(interface):
     class _fields_enum(Enum):
         logged_in = bool
-        username  = str
+        username = str
 
-## TODO: make it actually work
+
+# TODO: make it actually work
 AccountFancy = class_from_proto(AccountInterface)
+
+
 class Account(object):
     def __init__(self):
         self._logged_in: bool = False
         self._username: str = ""
+
 
 class Message(object):
     def __init__(self):
@@ -30,9 +34,11 @@ class Message(object):
 
 # OBJECT MODEL
 
+
 class BaseRequest(object):
     def __init__(self):
         pass
+
 
 class BaseResponse(object):
     def __init__(self):
@@ -40,9 +46,11 @@ class BaseResponse(object):
 
 # Function 0: Log In Account
 
+
 class LogInAccountRequest(BaseRequest):
     def __init__(self):
         self._username: str = ""
+
 
 class LogInAccountResponse(BaseResponse):
     def __init__(self):
@@ -50,9 +58,11 @@ class LogInAccountResponse(BaseResponse):
 
 # Function 1: Create Account
 
+
 class CreateAccountRequest(BaseRequest):
     def __init__(self):
         self._username: str = ""
+
 
 class CreateAccountResponse(BaseResponse):
     def __init__(self):
@@ -60,9 +70,11 @@ class CreateAccountResponse(BaseResponse):
 
 # Function 2: List Accounts
 
+
 class ListAccountsRequest(BaseRequest):
     def __init__(self):
         pass
+
 
 class ListAccountsResponse(BaseResponse):
     def __init__(self):
@@ -70,11 +82,13 @@ class ListAccountsResponse(BaseResponse):
 
 # Function 3: Send Message
 
+
 class SendMessageRequest(BaseRequest):
     def __init__(self):
         self._message: str = ""
         self._recipient_username: str = ""
         self._sender_username: str = ""
+
 
 class SendMessageResponse(BaseResponse):
     def __init__(self):
@@ -82,9 +96,11 @@ class SendMessageResponse(BaseResponse):
 
 # Function 4: Deliver Undelivered Messages
 
+
 class DeliverUndeliveredMessagesRequest(BaseRequest):
     def __init__(self):
         self._username: str = ""
+
 
 class DeliverUndeliveredMessagesResponse(BaseResponse):
     def __init__(self):
@@ -92,9 +108,11 @@ class DeliverUndeliveredMessagesResponse(BaseResponse):
 
 # Function 5: Delete Account
 
+
 class DeleteAccountRequest(BaseRequest):
     def __init__(self):
         self._username: str = ""
+
 
 class DeleteAccountResponse(BaseResponse):
     def __init__(self):

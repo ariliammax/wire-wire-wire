@@ -1,4 +1,7 @@
-# Setup
+# Setup and scripts
+
+All scripts mentioned in this document should be ran in the main directory
+(i.e. where you currently are, i.e. [wire/](../wire)).
 
 ## Module installation
 
@@ -23,3 +26,10 @@ ipconfig getifaddr en0
 
 Then do ....
 
+## Linting
+
+To lint the source code, run
+
+```bash
+source lint.sh
+```

@@ -1,9 +1,9 @@
 # events.py
 # in chat.common.server
 
-import typing
+import typing   # noqa
 
-from chat.common.operations import Opcode
+from chat.common.operations import Opcode  # noqa
 from typing import Callable
 
 
@@ -19,8 +19,5 @@ def main(entry: Callable, request: Callable, handler: Callable, **kwargs):
     """
     try:
         kwargs = entry(**kwargs)
-
-        
-
     except Exception as err:
         handler(err=err, **kwargs)

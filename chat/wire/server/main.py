@@ -2,9 +2,9 @@
 # in chat.wire.server
 
 from chat.common.config import Config
-from chat.common.models import Account, Message
+from chat.common.models import Account, Message  # noqa
 from chat.common.operations import Opcode
-from chat.common.server.events import main as server_main
+from chat.common.server.events import main as server_main  # noqa
 from chat.wire.server.database import Database
 
 import socket
@@ -38,7 +38,8 @@ def handle_connection(connection):
                 username = arguments[1]
                 if username in Database.accounts:
                     response = ' '
-                    #  f'ERROR: Account {username!s} already exists... logging in!'
+                    #  (f'ERROR: Account {username!s} already '
+                    #   f'exists... logging in!')
 
                 account = Account()
                 account._username = username
@@ -46,7 +47,8 @@ def handle_connection(connection):
                 Database.accounts[username] = account
             elif opcode == Opcode.LIST_ACCOUNTS.value:
                 response = ",".join(f'{acc._username!s} '
-                                    f'({"in" if not acc._logged_in else ""!s}active)'
+                                    f'({"in" if not acc._logged_in else ""!s}'
+                                    f'active)'
                                     for _, acc in Database.accounts.items())
             elif opcode == Opcode.DELETE_ACCOUNT.value:
                 if username in Database.accounts:
@@ -54,7 +56,7 @@ def handle_connection(connection):
                     break
 
             connection.sendall(response.encode("utf-8"))
-    except:
+    except Exception:
         pass
 
     if username is not None:

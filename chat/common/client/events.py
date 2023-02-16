@@ -1,7 +1,7 @@
 # events.py
 # in chat.common.client
 
-import typing
+import typing  # noqa
 
 from chat.common.operations import Opcode
 from typing import Callable

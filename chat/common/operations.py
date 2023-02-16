@@ -1,12 +1,11 @@
 # operations.py
 # in chat.common
 
-from chat.common.util import interface, class_from_proto
+# from chat.common.util import interface, class_from_proto
 from enum import Enum
-from typing import Optional
 
 
-## OP CODES
+# OP CODES
 class Opcode(Enum):
     LOGIN_ACCOUNT = 0
     CREATE_ACCOUNT = 1

@@ -36,12 +36,12 @@ def class_from_proto(iface: interface) -> type:
 
     not_enum = False
     if (type(iface._fields_enum) is not Enum and
-        type(iface._fields_enum) is not EnumMeta):
+            type(iface._fields_enum) is not EnumMeta):
         not_enum = True
 
     if not not_enum:
         if (not issubclass(iface._fields_enum, Enum) and
-            not issubclass(iface._fields_enum, EnumMeta)):
+                not issubclass(iface._fields_enum, EnumMeta)):
             not_enum = True
 
     if not_enum:
@@ -68,7 +68,7 @@ def class_from_proto(iface: interface) -> type:
         # the getter we'll add to `__impl_class__`.
         # TODO: does this carry around `priv_name`? or is it constant?
         # probs a nit pick either way for this application.
-        def __impl_setter__(self: __impl_class__, val : Optional[value]):
+        def __impl_setter__(self: __impl_class__, val: Optional[value]):
             setattr(self, f'_{name!s}', val)
 
         setattr(__impl_class__, f'set_{name!s}', __impl_setter__)
