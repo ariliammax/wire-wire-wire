@@ -3,7 +3,7 @@
 
 from chat.common.models import Account, Message
 from threading import Lock
-from typing import Dict
+from typing import Dict, Optional
 
 
 class Database(object):
@@ -47,10 +47,12 @@ class Database(object):
             cls._messages[username] = messages
 
     @classmethod
-    def get_messages(cls):
+    def get_messages(cls, recipient: Optional[Account] = None):
         messages = {}
         with cls.messages_lock:
-            messages = {k: v for k, v in cls._messages.items()}
+            messages = {k: v for k, v in cls._messages.items() if
+                        recipient is not None and
+                        k == recipient.get_username()}
         return messages
 
     @classmethod
