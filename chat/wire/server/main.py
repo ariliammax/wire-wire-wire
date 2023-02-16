@@ -5,7 +5,7 @@ from chat.common.config import Config
 from chat.common.models import Account, Message  # noqa
 from chat.common.operations import Opcode
 from chat.common.server.events import main as server_main  # noqa
-from chat.wire.server.database import Database
+from chat.common.server.database import Database
 
 import socket
 import threading
@@ -35,25 +35,27 @@ def handle_connection(connection):
             response = " "
 
             if opcode == Opcode.CREATE_ACCOUNT.value:
+                # set state (just `username`)
                 username = arguments[1]
-                if username in Database.accounts:
-                    response = ' '
+                account = (Account()
+                           .set_username(username)
+                           .set_logged_in(True))
+                if Database.has_account(account):
+                    pass
+                    # response = ' '
                     #  (f'ERROR: Account {username!s} already '
                     #   f'exists... logging in!')
 
-                account = Account()
-                account._username = username
-                account._logged_in = True
-                Database.accounts[username] = account
+                Database.upsert_account(account)
             elif opcode == Opcode.LIST_ACCOUNTS.value:
                 response = ",".join(f'{acc._username!s} '
                                     f'({"in" if not acc._logged_in else ""!s}'
                                     f'active)'
-                                    for _, acc in Database.accounts.items())
+                                    for _, acc in
+                                    Database.get_accounts().items())
             elif opcode == Opcode.DELETE_ACCOUNT.value:
-                if username in Database.accounts:
-                    Database.accounts.pop(username)
-                    break
+                Database.delete_account(Account()
+                                        .set_username(username))
 
             connection.sendall(response.encode("utf-8"))
     except Exception:
@@ -61,9 +63,10 @@ def handle_connection(connection):
 
     if username is not None:
         if username in Database.accounts:
-            account = Database.accounts[username]
-            account._logged_in = False
-            Database.accounts[username] = account
+            account = (Account()
+                       .set_username(username)
+                       .set_logged_in(False))
+            Database.upsert_account(account)
 
 
 def handler(err: Exception, s: socket.socket = None, **kwargs):
