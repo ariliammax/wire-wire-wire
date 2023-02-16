@@ -15,7 +15,6 @@ share/
 # misc sudo calls
 lib64
 
-
 ## a bunch of python stuff from https://github.com/github/gitignore/blob/main/Python.gitignore
 ## after this point
 # Byte-compiled / optimized / DLL files
