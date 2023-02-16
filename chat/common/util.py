@@ -13,10 +13,10 @@ class interface(object):
           `_fields_enum`: An `Enum` subclass which has members of the names
                           of the field name and values of the field type.
     """
-    _fields_enum : Optional[type] = None
+    _fields_enum: Optional[type] = None
 
 
-def class_from_proto(iface : interface) -> type:
+def class_from_proto(iface: interface) -> type:
     """Materializes a class with getters and setters from an interface.
 
         Raises: A `ValueError` if `iface` is not `interface` subclass,
@@ -68,13 +68,13 @@ def class_from_proto(iface : interface) -> type:
         # the getter we'll add to `__impl_class__`.
         # TODO: does this carry around `priv_name`? or is it constant?
         # probs a nit pick either way for this application.
-        def __impl_setter__(self : __impl_class__, val : Optional[value]):
+        def __impl_setter__(self: __impl_class__, val : Optional[value]):
             setattr(self, f'_{name!s}', val)
 
         setattr(__impl_class__, f'set_{name!s}', __impl_setter__)
 
         # the setter we'll add to `__impl_class__`.
-        def __impl_getter__(self : __impl_class__) -> Optional[value]:
+        def __impl_getter__(self: __impl_class__) -> Optional[value]:
             return getattr(self, f'_{name!s}', None)
 
         setattr(__impl_class__, f'get_{name!s}', __impl_getter__)

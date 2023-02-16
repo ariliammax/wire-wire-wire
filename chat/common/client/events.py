@@ -45,8 +45,7 @@ def main(entry: Callable, request: Callable, handler: Callable, **kwargs):
             elif (opcode == Opcode.DELIVER_UNDELIVERED_MESSAGES.value):
                 break
             elif (opcode == Opcode.DELETE_ACCOUNT.value):
+                response = request(Opcode.DELETE_ACCOUNT, **kwargs)
                 break
     except Exception as err:
         handler(err=err, **kwargs)
-
-    pass
