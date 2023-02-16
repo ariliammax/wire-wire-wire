@@ -2,7 +2,6 @@
 # in chat.common
 
 from enum import Enum, EnumMeta
-
 from typing import Optional
 
 
@@ -63,24 +62,25 @@ def class_from_proto(iface : interface) -> type:
                              f'has member \'{name!r}\' with value '
                              f'\'{value!r}\' which is not a `type`.')
 
-        priv_name = f'_{name}'
+        # note: you do NOT want to put `f'_{name!s}'` as a variable, because
+        # it will bind, and everything will go to one place.
 
         # the getter we'll add to `__impl_class__`.
         # TODO: does this carry around `priv_name`? or is it constant?
         # probs a nit pick either way for this application.
         def __impl_setter__(self : __impl_class__, val : Optional[value]):
-            setattr(self, priv_name, val)
+            setattr(self, f'_{name!s}', val)
 
-        setattr(__impl_class__, f'set_{name}', __impl_setter__)
+        setattr(__impl_class__, f'set_{name!s}', __impl_setter__)
 
         # the setter we'll add to `__impl_class__`.
         def __impl_getter__(self : __impl_class__) -> Optional[value]:
-            return getattr(self, priv_name, None)
+            return getattr(self, f'_{name!s}', None)
 
-        setattr(__impl_class__, f'get_{name}', __impl_getter__)
+        setattr(__impl_class__, f'get_{name!s}', __impl_getter__)
 
         # default value, see the note on `__init__` for explanation.
-        setattr(__impl_class__, priv_name, None)
+        setattr(__impl_class__, f'_{name!s}', None)
 
     # the `__init__` we'll add to `__impl_class__`.
     # Note that just doing the `Enum` members in the init itself (i.e. allocate

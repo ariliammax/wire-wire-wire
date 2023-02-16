@@ -1,10 +1,20 @@
 # models.py
 # in chat.common
 
+from chat.common.util import interface, class_from_proto
+from enum import Enum
 from typing import Optional
 
-# DATA MODEL
 
+## DATA MODELS
+
+class AccountInterface(interface):
+    class _fields_enum(Enum):
+        logged_in = bool
+        username  = str
+
+## TODO: make it actually work
+AccountFancy = class_from_proto(AccountInterface)
 class Account(object):
     def __init__(self):
         self._logged_in: bool = False

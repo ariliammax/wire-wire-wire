@@ -8,7 +8,7 @@ but best practice.
 Anyways, once that is configured, then use
 
 ```bash
-pip install -e ./
+source install.sh
 ```
 
 to install a local version of the modules in the project.

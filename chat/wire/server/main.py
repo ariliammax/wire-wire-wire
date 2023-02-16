@@ -1,38 +1,36 @@
 # main.py
 # in chat.wire.server
 
-#from chat.common.config import Config
-class Config:
-    HOST = "10.250.25.88"
-    PORT = 8080
-    TIMEOUT = 1
-
-from database import Database
-
-from enum import Enum
-class Opcode(Enum):
-    LOGIN_ACCOUNT = 0
-    CREATE_ACCOUNT = 1
-    LIST_ACCOUNTS = 2
-    SEND_MESSAGE = 3
-    DELIVER_UNDELIVERED_MESSAGES = 4
-    DELETE_ACCOUNT = 5
+from chat.common.config import Config
+from chat.common.operations import Opcode
+from chat.common.server.events import main as server_main
+from chat.wire.server.database import Database
 
 import socket
 import threading
 
-def handle_connection(connection, address):
+
+def entry(**kwargs):
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.bind((Config.HOST, Config.PORT))
+
+
+def handle_connection(connection):
     while True:
         request = connection.recv(1024).decode("utf-8")
         response = " "
 
         arguments = request.split(",")
+        if len(arguments[0]) == 0:
+            # TODO: I believe this can be a signal of disconnect?
+            continue
+
         opcode = int(arguments[0])
 
         if opcode == Opcode.CREATE_ACCOUNT.value:
             username = arguments[1]
             if username in Database.accounts:
-                response = "ERROR"
+                response = f"ERROR: Account {username!s} already exists... logging in"
             else:
                 Database.accounts.append(username)
         elif opcode == Opcode.LIST_ACCOUNTS.value:
@@ -40,7 +38,20 @@ def handle_connection(connection, address):
 
         connection.sendall(response.encode("utf-8"))
 
+
+def handler(err: Exception, s: socket.socket = None, **kwargs):
+    if s is not None:
+        s.shutdown()
+        s.close()
+    raise err
+
+
 if __name__ == '__main__':
+    # server_main(entry=entry,
+    #             # prethread ?
+    #             # spawn ?
+    #             # handle (attached to spawned thread)
+    #             handler=handler)
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind((Config.HOST, Config.PORT))
         s.listen()
@@ -48,10 +59,10 @@ if __name__ == '__main__':
         while True:
             try:
                 s.settimeout(Config.TIMEOUT)
-                connection, address = s.accept()
+                connection, _ = s.accept()
                 s.settimeout(None)
                 thread = threading.Thread(target=handle_connection,
-                                          args=[connection, address])
+                                          args=[connection])
                 thread.start()
                 threads.append(thread)
             except TimeoutError:

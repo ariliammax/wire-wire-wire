@@ -6,4 +6,4 @@ setup(name='chat',
                 'wire'],  # eventually also 
       package_dir={'common': 'chat/common/',
                    'wire': 'chat/wire/'},
-      install_requires=[])
+      install_requires=['flake8'])
