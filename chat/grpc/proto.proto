@@ -2,14 +2,79 @@ syntax = "proto3";
 
 package chat;
 
-service Greeter {
-  rpc SayHello (HelloRequest) returns (HelloReply) {}
+service Chat {
+  rpc LogInAccount (LogInAccountRequest) returns (LogInAccountResponse) {}
+  rpc CreateAccount (CreateAccountRequest) returns (CreateAccountResponse) {}
+  rpc ListAccounts (ListAccountsRequest) returns (ListAccountsResponse) {}
+  rpc SendMessage (SendMessageRequest) returns (SendMessageResponse) {}
+  rpc DeliverUndeliveredMessages (DeliverUndeliveredMessagesRequest) returns (DeliverUndeliveredMessagesResponse) {}
+  rpc DeleteAccount (DeleteAccountRequest) returns (DeleteAccountResponse) {}
 }
 
-message HelloRequest {
-  string name = 1;
+// DATA MODELS
+
+message Account {
+  bool logged_in = 1;
+  string username = 2;
 }
 
-message HelloReply {
+message Message {
+  bool delivered = 1;
+  string message = 2;
+  string recipient_username = 3;
+  string sender_username = 4;
+  int64 time = 5;
+}
+
+// OBJECT MODELS
+
+message LogInAccountRequest {
+  string username = 1;
+}
+
+message LogInAccountResponse {
+  string error = 1;
+}
+
+message CreateAccountRequest {
+  string username = 1;
+}
+
+message CreateAccountResponse {
+  string error = 1;
+}
+
+message ListAccountsRequest {
+}
+
+message ListAccountsResponse {
+  string error = 1;
+  repeated Account accounts = 2;
+}
+
+message SendMessageRequest {
   string message = 1;
+  string recipient_username = 2;
+  string sender_username = 3;
+}
+
+message SendMessageResponse {
+  string error = 1;
+}
+
+message DeliverUndeliveredMessagesRequest {
+  string username = 1;
+}
+
+message DeliverUndeliveredMessagesResponse {
+  string error = 1;
+  repeated Message messages = 2;
+}
+
+message DeleteAccountRequest {
+  string username = 1;
+}
+
+message DeleteAccountResponse {
+  string error = 1;
 }

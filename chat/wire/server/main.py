@@ -33,23 +33,21 @@ def handle_connection(connection):
 
             arguments = request.split(",")
             opcode = int(arguments[0])
-            response = " "
 
             if opcode == Opcode.CREATE_ACCOUNT.value:
                 username = arguments[1]
-                Operations.create_account(username)
+                response = Operations.create_account(username)
             elif opcode == Opcode.LIST_ACCOUNTS.value:
                 response = Operations.list_accounts()
             elif opcode == Opcode.SEND_MESSAGE.value:
                 msg = arguments[1]
                 recipient = arguments[2]
                 sender = arguments[3]
-                Operations.send_message(msg, recipient, sender)
+                response = Operations.send_message(msg, recipient, sender)
             elif opcode == Opcode.DELIVER_UNDELIVERED_MESSAGES.value:
-                username = arguments[1]
-                response = Operations.deliver_undelivered_messages(username)
+                response = Operations.deliver_undelivered_messages(arguments[1])
             elif opcode == Opcode.DELETE_ACCOUNT.value:
-                Operations.delete_account(username)
+                response = Operations.delete_account(arguments[1])
 
             connection.sendall(response.encode("utf-8"))
     except Exception:

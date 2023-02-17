@@ -31,6 +31,7 @@ class Operations():
             #   f'exists... logging in!')
 
         Database.upsert_account(account)
+        return " "
 
     def list_accounts():
         return ",".join(f'{acc._username!s} '
@@ -39,20 +40,20 @@ class Operations():
                         for _, acc in
                         Database.get_accounts().items())
 
-    def send_message(msg: str, recipient: str, sender: str):
+    def send_message(message: str, recipient_username: str, sender_username: str):
         message = (Message()
                     .set_delivered(False)
-                    .set_message(msg)
-                    .set_recipient_username(recipient)
-                    .set_sender_username(sender)
+                    .set_message(message)
+                    .set_recipient_username(recipient_username)
+                    .set_sender_username(sender_username)
                     .set_time(0))
         Database.upsert_message(message)
+        return " "
 
     def deliver_undelivered_messages(username: str):
         messages = []
         account = Database._accounts[username]
         messages_by_sender = Database.get_messages(account)
-        print(messages_by_sender)
         if (not messages_by_sender):
             return "No new messages!"
         else:
@@ -66,5 +67,4 @@ class Operations():
     def delete_account(username: str):
         Database.delete_account(Account()
                                 .set_username(username))
-
-
+        return " "

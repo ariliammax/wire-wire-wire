@@ -54,7 +54,7 @@ def main(entry: Callable, request: Callable, handler: Callable, **kwargs):
                 response = request(Opcode.DELIVER_UNDELIVERED_MESSAGES, username, **kwargs)
                 print("\n" + response + "\n")
             elif (opcode == Opcode.DELETE_ACCOUNT.value):
-                response = request(Opcode.DELETE_ACCOUNT, **kwargs)
+                response = request(Opcode.DELETE_ACCOUNT, username, **kwargs)
                 break
     except Exception as err:
         handler(err=err, **kwargs)

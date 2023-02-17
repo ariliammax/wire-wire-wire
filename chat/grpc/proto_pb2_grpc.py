@@ -5,7 +5,7 @@ import grpc
 import proto_pb2 as proto__pb2
 
 
-class GreeterStub(object):
+class ChatStub(object):
     """Missing associated documentation comment in .proto file."""
 
     def __init__(self, channel):
@@ -14,42 +14,122 @@ class GreeterStub(object):
         Args:
             channel: A grpc.Channel.
         """
-        self.SayHello = channel.unary_unary(
-                '/wire.Greeter/SayHello',
-                request_serializer=proto__pb2.HelloRequest.SerializeToString,
-                response_deserializer=proto__pb2.HelloReply.FromString,
+        self.LogInAccount = channel.unary_unary(
+                '/chat.Chat/LogInAccount',
+                request_serializer=proto__pb2.LogInAccountRequest.SerializeToString,
+                response_deserializer=proto__pb2.LogInAccountResponse.FromString,
+                )
+        self.CreateAccount = channel.unary_unary(
+                '/chat.Chat/CreateAccount',
+                request_serializer=proto__pb2.CreateAccountRequest.SerializeToString,
+                response_deserializer=proto__pb2.CreateAccountResponse.FromString,
+                )
+        self.ListAccounts = channel.unary_unary(
+                '/chat.Chat/ListAccounts',
+                request_serializer=proto__pb2.ListAccountsRequest.SerializeToString,
+                response_deserializer=proto__pb2.ListAccountsResponse.FromString,
+                )
+        self.SendMessage = channel.unary_unary(
+                '/chat.Chat/SendMessage',
+                request_serializer=proto__pb2.SendMessageRequest.SerializeToString,
+                response_deserializer=proto__pb2.SendMessageResponse.FromString,
+                )
+        self.DeliverUndeliveredMessages = channel.unary_unary(
+                '/chat.Chat/DeliverUndeliveredMessages',
+                request_serializer=proto__pb2.DeliverUndeliveredMessagesRequest.SerializeToString,
+                response_deserializer=proto__pb2.DeliverUndeliveredMessagesResponse.FromString,
+                )
+        self.DeleteAccount = channel.unary_unary(
+                '/chat.Chat/DeleteAccount',
+                request_serializer=proto__pb2.DeleteAccountRequest.SerializeToString,
+                response_deserializer=proto__pb2.DeleteAccountResponse.FromString,
                 )
 
 
-class GreeterServicer(object):
+class ChatServicer(object):
     """Missing associated documentation comment in .proto file."""
 
-    def SayHello(self, request, context):
+    def LogInAccount(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def CreateAccount(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def ListAccounts(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def SendMessage(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def DeliverUndeliveredMessages(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def DeleteAccount(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
 
-def add_GreeterServicer_to_server(servicer, server):
+def add_ChatServicer_to_server(servicer, server):
     rpc_method_handlers = {
-            'SayHello': grpc.unary_unary_rpc_method_handler(
-                    servicer.SayHello,
-                    request_deserializer=proto__pb2.HelloRequest.FromString,
-                    response_serializer=proto__pb2.HelloReply.SerializeToString,
+            'LogInAccount': grpc.unary_unary_rpc_method_handler(
+                    servicer.LogInAccount,
+                    request_deserializer=proto__pb2.LogInAccountRequest.FromString,
+                    response_serializer=proto__pb2.LogInAccountResponse.SerializeToString,
+            ),
+            'CreateAccount': grpc.unary_unary_rpc_method_handler(
+                    servicer.CreateAccount,
+                    request_deserializer=proto__pb2.CreateAccountRequest.FromString,
+                    response_serializer=proto__pb2.CreateAccountResponse.SerializeToString,
+            ),
+            'ListAccounts': grpc.unary_unary_rpc_method_handler(
+                    servicer.ListAccounts,
+                    request_deserializer=proto__pb2.ListAccountsRequest.FromString,
+                    response_serializer=proto__pb2.ListAccountsResponse.SerializeToString,
+            ),
+            'SendMessage': grpc.unary_unary_rpc_method_handler(
+                    servicer.SendMessage,
+                    request_deserializer=proto__pb2.SendMessageRequest.FromString,
+                    response_serializer=proto__pb2.SendMessageResponse.SerializeToString,
+            ),
+            'DeliverUndeliveredMessages': grpc.unary_unary_rpc_method_handler(
+                    servicer.DeliverUndeliveredMessages,
+                    request_deserializer=proto__pb2.DeliverUndeliveredMessagesRequest.FromString,
+                    response_serializer=proto__pb2.DeliverUndeliveredMessagesResponse.SerializeToString,
+            ),
+            'DeleteAccount': grpc.unary_unary_rpc_method_handler(
+                    servicer.DeleteAccount,
+                    request_deserializer=proto__pb2.DeleteAccountRequest.FromString,
+                    response_serializer=proto__pb2.DeleteAccountResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
-            'wire.Greeter', rpc_method_handlers)
+            'chat.Chat', rpc_method_handlers)
     server.add_generic_rpc_handlers((generic_handler,))
 
 
  # This class is part of an EXPERIMENTAL API.
-class Greeter(object):
+class Chat(object):
     """Missing associated documentation comment in .proto file."""
 
     @staticmethod
-    def SayHello(request,
+    def LogInAccount(request,
             target,
             options=(),
             channel_credentials=None,
@@ -59,8 +139,93 @@ class Greeter(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/wire.Greeter/SayHello',
-            proto__pb2.HelloRequest.SerializeToString,
-            proto__pb2.HelloReply.FromString,
+        return grpc.experimental.unary_unary(request, target, '/chat.Chat/LogInAccount',
+            proto__pb2.LogInAccountRequest.SerializeToString,
+            proto__pb2.LogInAccountResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def CreateAccount(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/chat.Chat/CreateAccount',
+            proto__pb2.CreateAccountRequest.SerializeToString,
+            proto__pb2.CreateAccountResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def ListAccounts(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/chat.Chat/ListAccounts',
+            proto__pb2.ListAccountsRequest.SerializeToString,
+            proto__pb2.ListAccountsResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def SendMessage(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/chat.Chat/SendMessage',
+            proto__pb2.SendMessageRequest.SerializeToString,
+            proto__pb2.SendMessageResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def DeliverUndeliveredMessages(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/chat.Chat/DeliverUndeliveredMessages',
+            proto__pb2.DeliverUndeliveredMessagesRequest.SerializeToString,
+            proto__pb2.DeliverUndeliveredMessagesResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def DeleteAccount(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/chat.Chat/DeleteAccount',
+            proto__pb2.DeleteAccountRequest.SerializeToString,
+            proto__pb2.DeleteAccountResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
