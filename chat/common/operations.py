@@ -52,11 +52,16 @@ class Operations():
         messages = []
         account = Database._accounts[username]
         messages_by_sender = Database.get_messages(account)
-        for sender, message_list in messages_by_sender.items():
-            for message in message_list:
-                message.set_delivered(True)
-                messages.append(f"{sender}: {message._message} {message._delivered}\n")
-        return ", ".join(messages)
+        print(messages_by_sender)
+        if (not messages_by_sender):
+            return "No new messages!"
+        else:
+            for sender, message_list in messages_by_sender.items():
+                messages.append(f"{sender}\n")
+                for message in message_list:
+                    message.set_delivered(True)
+                    messages.append(f"> {message._message}\n")
+            return "".join(messages)
 
     def delete_account(username: str):
         Database.delete_account(Account()

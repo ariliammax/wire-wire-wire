@@ -49,10 +49,10 @@ def main(entry: Callable, request: Callable, handler: Callable, **kwargs):
                     recipient, 
                     username, 
                     **kwargs)
-                print("Message was sent!")
+                print("\nYour message was sent!\n")
             elif (opcode == Opcode.DELIVER_UNDELIVERED_MESSAGES.value):
                 response = request(Opcode.DELIVER_UNDELIVERED_MESSAGES, username, **kwargs)
-                print(response)
+                print("\n" + response + "\n")
             elif (opcode == Opcode.DELETE_ACCOUNT.value):
                 response = request(Opcode.DELETE_ACCOUNT, **kwargs)
                 break

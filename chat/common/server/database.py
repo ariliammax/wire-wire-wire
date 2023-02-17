@@ -50,9 +50,11 @@ class Database(object):
     def get_messages(cls, recipient: Optional[Account] = None):
         messages = {}
         with cls.messages_lock:
-            messages = {k: v for k, v in cls._messages.items() if
-                        recipient is not None and
-                        k == recipient.get_username()}
+            for k, v in cls._messages.items():
+                if recipient is not None and k == recipient.get_username():
+                    undelivered_msgs = [msg for msg in v if not msg._delivered]
+                    if undelivered_msgs:
+                        messages[k] = undelivered_msgs
         return messages
 
     @classmethod
