@@ -3,8 +3,14 @@ from setuptools import setup
 setup(name='chat',
       version='0.1',
       packages=['common',
-                'wire'],  # eventually also 
+                'wire',
+                'wire.client',
+                'wire.server',
+                'grpc'],
       package_dir={'common': 'chat/common/',
-                   'wire': 'chat/wire/'},
-      install_requires=['flake8'],
+                   'wire': 'chat/wire/',
+                   'grpc': 'chat/grpc'},
+      install_requires=['flake8',
+                        'grpcio',
+                        'grpcio-tools'],
       python_requires='~=3.10')
