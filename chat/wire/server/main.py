@@ -4,6 +4,7 @@
 from chat.common.config import Config
 from chat.common.models import Account, Message  # noqa
 from chat.common.operations import Opcode
+from chat.common.operations import Operations
 from chat.common.server.events import main as server_main  # noqa
 from chat.common.server.database import Database
 
@@ -35,34 +36,27 @@ def handle_connection(connection):
             response = " "
 
             if opcode == Opcode.CREATE_ACCOUNT.value:
-                # set state (just `username`)
                 username = arguments[1]
-                account = (Account()
-                           .set_username(username)
-                           .set_logged_in(True))
-                if Database.has_account(account):
-                    pass
-                    # response = ' '
-                    #  (f'ERROR: Account {username!s} already '
-                    #   f'exists... logging in!')
-
-                Database.upsert_account(account)
+                Operations.create_account(username)
             elif opcode == Opcode.LIST_ACCOUNTS.value:
-                response = ",".join(f'{acc._username!s} '
-                                    f'({"in" if not acc._logged_in else ""!s}'
-                                    f'active)'
-                                    for _, acc in
-                                    Database.get_accounts().items())
+                response = Operations.list_accounts()
+            elif opcode == Opcode.SEND_MESSAGE.value:
+                msg = arguments[1]
+                recipient = arguments[2]
+                sender = arguments[3]
+                Operations.send_message(msg, recipient, sender)
+            elif opcode == Opcode.DELIVER_UNDELIVERED_MESSAGES.value:
+                username = arguments[1]
+                response = Operations.deliver_undelivered_messages(username)
             elif opcode == Opcode.DELETE_ACCOUNT.value:
-                Database.delete_account(Account()
-                                        .set_username(username))
+                Operations.delete_account(username)
 
             connection.sendall(response.encode("utf-8"))
     except Exception:
         pass
 
     if username is not None:
-        if username in Database.accounts:
+        if username in Database._accounts:
             account = (Account()
                        .set_username(username)
                        .set_logged_in(False))

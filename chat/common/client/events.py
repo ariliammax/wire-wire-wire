@@ -41,9 +41,18 @@ def main(entry: Callable, request: Callable, handler: Callable, **kwargs):
                 response = request(Opcode.LIST_ACCOUNTS, **kwargs)
                 print("\nAccounts:\n[" + response + "]\n")
             elif (opcode == Opcode.SEND_MESSAGE.value):
-                break
+                recipient = input("> Recipient: ")
+                message = input("> Message: ")
+                response = request(
+                    Opcode.SEND_MESSAGE, 
+                    message, 
+                    recipient, 
+                    username, 
+                    **kwargs)
+                print("Message was sent!")
             elif (opcode == Opcode.DELIVER_UNDELIVERED_MESSAGES.value):
-                break
+                response = request(Opcode.DELIVER_UNDELIVERED_MESSAGES, username, **kwargs)
+                print(response)
             elif (opcode == Opcode.DELETE_ACCOUNT.value):
                 response = request(Opcode.DELETE_ACCOUNT, **kwargs)
                 break
