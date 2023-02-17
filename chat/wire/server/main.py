@@ -7,6 +7,7 @@ from chat.common.operations import Opcode
 from chat.common.operations import Operations
 from chat.common.server.events import main as server_main  # noqa
 from chat.common.server.database import Database
+from typing import Optional
 
 import socket
 import threading
@@ -45,7 +46,8 @@ def handle_connection(connection):
                 sender = arguments[3]
                 response = Operations.send_message(msg, recipient, sender)
             elif opcode == Opcode.DELIVER_UNDELIVERED_MESSAGES.value:
-                response = Operations.deliver_undelivered_messages(arguments[1])
+                response = Operations.deliver_undelivered_messages(arguments
+                                                                   [1])
             elif opcode == Opcode.DELETE_ACCOUNT.value:
                 response = Operations.delete_account(arguments[1])
 
@@ -61,7 +63,7 @@ def handle_connection(connection):
             Database.upsert_account(account)
 
 
-def handler(err: Exception, s: socket.socket = None, **kwargs):
+def handler(err: Exception, s: Optional[socket.socket] = None, **kwargs):
     if s is not None:
         s.shutdown()
         s.close()

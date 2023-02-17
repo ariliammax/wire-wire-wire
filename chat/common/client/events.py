@@ -44,14 +44,16 @@ def main(entry: Callable, request: Callable, handler: Callable, **kwargs):
                 recipient = input("> Recipient: ")
                 message = input("> Message: ")
                 response = request(
-                    Opcode.SEND_MESSAGE, 
-                    message, 
-                    recipient, 
-                    username, 
+                    Opcode.SEND_MESSAGE,
+                    message,
+                    recipient,
+                    username,
                     **kwargs)
                 print("\nYour message was sent!\n")
             elif (opcode == Opcode.DELIVER_UNDELIVERED_MESSAGES.value):
-                response = request(Opcode.DELIVER_UNDELIVERED_MESSAGES, username, **kwargs)
+                response = request(Opcode.DELIVER_UNDELIVERED_MESSAGES,
+                                   username,
+                                   **kwargs)
                 print("\n" + response + "\n")
             elif (opcode == Opcode.DELETE_ACCOUNT.value):
                 response = request(Opcode.DELETE_ACCOUNT, username, **kwargs)

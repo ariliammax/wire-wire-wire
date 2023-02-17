@@ -1,10 +1,14 @@
+# main.py
+# in chat.grpc.client
+
 from chat.common.client.events import main as client_main
 from chat.common.config import Config
 from chat.common.operations import Opcode
+from typing import Optional
 
 import grpc
-import proto_pb2
-import proto_pb2_grpc
+import chat.grpc.grpcio.proto_pb2 as proto_pb2
+import chat.grpc.grpcio.proto_pb2_grpc as proto_pb2_grpc
 
 
 def entry(**kwargs):
@@ -13,7 +17,10 @@ def entry(**kwargs):
     return kwargs
 
 
-def request(opcode: Opcode, *args, channel = None, **kwargs):
+def request(opcode: Opcode,
+            *args,
+            channel: grpc.Channel = None,
+            **kwargs):
     stub = proto_pb2_grpc.ChatStub(channel)
 
     if opcode == Opcode.LOGIN_ACCOUNT:
@@ -40,7 +47,9 @@ def request(opcode: Opcode, *args, channel = None, **kwargs):
     return response.error
 
 
-def handler(err: Exception, channel = None, **kwargs):
+def handler(err: Exception,
+            channel: Optional[grpc.Channel] = None,
+            **kwargs):
     if channel is not None:
         channel.close()
     raise err

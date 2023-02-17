@@ -22,8 +22,8 @@ class Operations():
         # set state (just `username`)
         username = username
         account = (Account()
-                    .set_username(username)
-                    .set_logged_in(True))
+                   .set_username(username)
+                   .set_logged_in(True))
         if Database.has_account(account):
             pass
             # response = ' '
@@ -40,13 +40,15 @@ class Operations():
                         for _, acc in
                         Database.get_accounts().items())
 
-    def send_message(message: str, recipient_username: str, sender_username: str):
+    def send_message(message: str,
+                     recipient_username: str,
+                     sender_username: str):
         message = (Message()
-                    .set_delivered(False)
-                    .set_message(message)
-                    .set_recipient_username(recipient_username)
-                    .set_sender_username(sender_username)
-                    .set_time(0))
+                   .set_delivered(False)
+                   .set_message(message)
+                   .set_recipient_username(recipient_username)
+                   .set_sender_username(sender_username)
+                   .set_time(0))
         Database.upsert_message(message)
         return " "
 

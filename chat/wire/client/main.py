@@ -4,6 +4,7 @@
 from chat.common.client.events import main as client_main
 from chat.common.config import Config
 from chat.common.operations import Opcode
+from typing import Optional
 
 import socket
 
@@ -27,7 +28,7 @@ def request(opcode: Opcode, *args, s: socket.socket = None, **kwargs):
     return response
 
 
-def handler(err: Exception, s: socket.socket = None, **kwargs):
+def handler(err: Exception, s: Optional[socket.socket] = None, **kwargs):
     if s is not None:
         s.shutdown()
         s.close()
