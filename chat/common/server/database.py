@@ -48,14 +48,21 @@ class Database(object):
 
     @classmethod
     def get_messages(cls, recipient: Optional[Account] = None):
-        messages = {}
+        recipient_messages = {}
         with cls.messages_lock:
-            for k, v in cls._messages.items():
-                if recipient is not None and k == recipient.get_username():
-                    undelivered_msgs = [msg for msg in v if not msg._delivered]
-                    if undelivered_msgs:
-                        messages[k] = undelivered_msgs
-        return messages
+            recipient_username = recipient.get_username()
+            if recipient_username not in cls._messages:
+                return {}
+            messages = cls._messages[recipient_username]
+            undelivered_msgs = [msg for msg in messages if not msg._delivered]
+            for undelivered_msg in list(undelivered_msgs):
+                sender_username = undelivered_msg.get_sender_username()
+                if sender_username not in messages:
+                    recipient_messages[sender_username] = []
+                msgs = recipient_messages[sender_username]
+                msgs.append(undelivered_msg)
+                recipient_messages[sender_username] = msgs
+        return recipient_messages
 
     @classmethod
     def delete_account(cls, account: Account):
