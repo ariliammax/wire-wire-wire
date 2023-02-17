@@ -113,6 +113,8 @@ when/if clients disconnected. So we'll just do threading now.
 
 Now, it's Ari's turn to start scribing. ~ _LM_
 
+...
+
 Hey, Ari here!
 
 We were looking at the benefits/drawbacks of using processes vs. threads
@@ -261,3 +263,27 @@ Everything is working as expected, so now as we prepare to support more function
 start creating opcodes for the multiple operations. The opcodes will be one byte and
 represented as an enum.
 
+OK, now it's Max's turn to start scribin'
+
+_"See ya soon!"_ ~ _AT_
+
+...
+
+We are currently refactoring the code to be extensible to both parts I and II:
+I) Wire Protocol
+II) GRPC
+
+Even though serialization is different between parts I and II, some logic is shared:
+- On both clients, the read-execute-print-loop logic should behave similarly.
+- On both servers, database transactions should behave similarly.
+
+Every operation has its own:
+- argument types
+- database transaction
+- description
+- opcode
+- response types
+
+In both parts, we invert control to common code that is shared between them.
+
+_"Arf, she said."_ - Frank Zappa ~ _MS_
