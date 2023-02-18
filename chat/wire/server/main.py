@@ -2,11 +2,8 @@
 # in chat.wire.server
 
 from chat.common.config import Config
-from chat.common.models import Account, Message  # noqa
 from chat.common.operations import Opcode
-from chat.common.operations import Operations
-from chat.common.server.events import main as server_main  # noqa
-from chat.common.server.database import Database
+from chat.common.server.events import Events
 from typing import Optional
 
 import socket
@@ -27,40 +24,40 @@ def handle_connection(connection):
         while True:
             request = connection.recv(1024).decode("utf-8")
             if len(request) == 0:
-                # TODO: I believe this can be a signal of disconnect?
-                # and so if we had a notion of state and username, we should
-                # update `._logged_in`...
+                # This is a signal of disconnect.
+                # and so if we update `._logged_in` on the loop exit
                 break
 
             arguments = request.split(",")
-            opcode = int(arguments[0])
+            opcode = Opcode(int(arguments[0]))
 
-            if opcode == Opcode.CREATE_ACCOUNT.value:
-                username = arguments[1]
-                response = Operations.create_account(username)
-            elif opcode == Opcode.LIST_ACCOUNTS.value:
-                response = Operations.list_accounts()
-            elif opcode == Opcode.SEND_MESSAGE.value:
-                msg = arguments[1]
-                recipient = arguments[2]
-                sender = arguments[3]
-                response = Operations.send_message(msg, recipient, sender)
-            elif opcode == Opcode.DELIVER_UNDELIVERED_MESSAGES.value:
-                response = Operations.deliver_undelivered_messages(arguments
-                                                                   [1])
-            elif opcode == Opcode.DELETE_ACCOUNT.value:
-                response = Operations.delete_account(arguments[1])
+            match opcode:
+                case Opcode.CREATE_ACCOUNT:
+                    username = arguments[1]
+                    response = Events.create_account(username=username)
+                case Opcode.LIST_ACCOUNTS:
+                    response = Events.list_accounts()
+                case Opcode.SEND_MESSAGE:
+                    msg = arguments[1]
+                    recipient = arguments[2]
+                    sender = arguments[3]
+                    response = Events.send_message(
+                        message=msg,
+                        recipient_username=recipient,
+                        sender_username=sender)
+                case Opcode.DELIVER_UNDELIVERED_MESSAGES:
+                    response = Events.deliver_undelivered_messages(
+                        username=username)
+                case Opcode.DELETE_ACCOUNT:
+                    response = Events.delete_account(username=username)
 
             connection.sendall(response.encode("utf-8"))
     except Exception:
         pass
 
     if username is not None:
-        if username in Database._accounts:
-            account = (Account()
-                       .set_username(username)
-                       .set_logged_in(False))
-            Database.upsert_account(account)
+        # update the logged in status... don't check for multiple devices
+        Events.account_logout(username=username)
 
 
 def handler(err: Exception, s: Optional[socket.socket] = None, **kwargs):
@@ -70,7 +67,7 @@ def handler(err: Exception, s: Optional[socket.socket] = None, **kwargs):
     raise err
 
 
-if __name__ == '__main__':
+def main():
     # server_main(entry=entry,
     #             # prethread ?
     #             # spawn ?
@@ -91,3 +88,7 @@ if __name__ == '__main__':
                 threads.append(thread)
             except TimeoutError:
                 pass
+
+
+if __name__ == '__main__':
+    main()

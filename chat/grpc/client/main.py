@@ -18,31 +18,36 @@ def entry(**kwargs):
 
 
 def request(opcode: Opcode,
-            *args,
             channel: grpc.Channel = None,
             **kwargs):
     stub = proto_pb2_grpc.ChatStub(channel)
 
-    if opcode == Opcode.LOGIN_ACCOUNT:
-        request = proto_pb2.LogInAccountRequest(username=args[0])
-        response = stub.LogInAccount(request)
-    elif opcode == Opcode.CREATE_ACCOUNT:
-        request = proto_pb2.CreateAccountRequest(username=args[0])
-        response = stub.CreateAccount(request)
-    elif opcode == Opcode.LIST_ACCOUNTS:
-        request = proto_pb2.ListAccountsRequest()
-        response = stub.ListAccounts(request)
-    elif opcode == Opcode.SEND_MESSAGE:
-        request = proto_pb2.SendMessageRequest(message=args[0],
-                                               recipient_username=args[1],
-                                               sender_username=args[2])
-        response = stub.SendMessage(request)
-    elif opcode == Opcode.DELIVER_UNDELIVERED_MESSAGES:
-        request = proto_pb2.DeliverUndeliveredMessagesRequest(username=args[0])
-        response = stub.DeliverUndeliveredMessages(request)
-    elif opcode == Opcode.DELETE_ACCOUNT:
-        request = proto_pb2.DeleteAccountRequest(username=args[0])
-        response = stub.DeleteAccount(request)
+    match opcode:
+        case Opcode.LOGIN_ACCOUNT:
+            request = proto_pb2.LogInAccountRequest(
+                username=kwargs.get('username', None))
+            response = stub.LogInAccount(request)
+        case Opcode.CREATE_ACCOUNT:
+            request = proto_pb2.CreateAccountRequest(
+                username=kwargs.get('username', None))
+            response = stub.CreateAccount(request)
+        case Opcode.LIST_ACCOUNTS:
+            request = proto_pb2.ListAccountsRequest()
+            response = stub.ListAccounts(request)
+        case Opcode.SEND_MESSAGE:
+            request = proto_pb2.SendMessageRequest(
+                message=kwargs.get('message', None),
+                recipient_username=kwargs.get('recipient_username', None),
+                sender_username=kwargs.get('sender_username', None))
+            response = stub.SendMessage(request)
+        case Opcode.DELIVER_UNDELIVERED_MESSAGES:
+            request = proto_pb2.DeliverUndeliveredMessagesRequest(
+                username=kwargs.get('username', None))
+            response = stub.DeliverUndeliveredMessages(request)
+        case Opcode.DELETE_ACCOUNT:
+            request = proto_pb2.DeleteAccountRequest(
+                username=kwargs.get('username', None))
+            response = stub.DeleteAccount(request)
 
     return response.error
 

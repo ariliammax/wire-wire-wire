@@ -1,54 +1,54 @@
 # models.py
 # in chat.common
 
-from chat.common.util import model_from_fields
+from chat.common.util import Model
 
 
 # DATA MODELS
 
 
-Account = model_from_fields(logged_in=bool,
-                            username=str)
+Account = Model.model_from_fields(logged_in=bool,
+                                  username=str)
 
 
-Message = model_from_fields(delivered=bool,
-                            message=str,
-                            recipient_username=str,
-                            sender_username=str,
-                            time=int)
+Message = Model.model_from_fields(delivered=bool,
+                                  message=str,
+                                  recipient_username=str,
+                                  sender_username=str,
+                                  time=int)
 
 
 # OBJECT MODEL... TODO: add "inheritence" in chat.common.util.model_from_
-BaseRequest = model_from_fields()
-BaseResponse = model_from_fields(error=str)
+BaseRequest = Model.model_from_fields()
+BaseResponse = Model.model_from_fields(error=str)
 
 
 # Function 0: Log In Account
-LogInAccountRequest = model_from_fields(username=str)
-LogInAccountResponse = model_from_fields()
+LogInAccountRequest = BaseRequest.add_fields(username=str)
+LogInAccountResponse = BaseResponse.add_fields()
 
 # Function 1: Create Account
-CreateAccountRequest = model_from_fields(username=str)
-CreateAccountResponse = model_from_fields()
+CreateAccountRequest = BaseRequest.add_fields(username=str)
+CreateAccountResponse = BaseResponse.add_fields()
 
 
 # Function 2: List Accounts
-ListAccountsRequest = model_from_fields()
-ListAccountsResponse = model_from_fields(accounts=list)
+ListAccountsRequest = BaseRequest.add_fields()
+ListAccountsResponse = BaseResponse.add_fields(accounts=list)
 
 
 # Function 3: Send Message
-SendMessageRequest = model_from_fields(message=str,
-                                       recipient_username=str,
-                                       sender_username=str)
-SendMessageResponse = model_from_fields()
+SendMessageRequest = BaseRequest.add_fields(message=str,
+                                            recipient_username=str,
+                                            sender_username=str)
+SendMessageResponse = BaseResponse.add_fields()
 
 
 # Function 4: Deliver Undelivered Messages
-DeliverUndeliveredMessagesRequest = model_from_fields(username=str)
-DeliverUndeliveredMessagesResponse = model_from_fields(messages=list)
+DeliverUndeliveredMessagesRequest = BaseRequest.add_fields(username=str)
+DeliverUndeliveredMessagesResponse = BaseResponse.add_fields(messages=list)
 
 
 # Function 5: Delete Account
-DeleteAccountRequest = model_from_fields()
-DeleteAccountResponse = model_from_fields()
+DeleteAccountRequest = BaseRequest.add_fields()
+DeleteAccountResponse = BaseResponse.add_fields()
