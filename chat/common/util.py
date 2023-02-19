@@ -40,8 +40,8 @@ class Model(object):
 
         return __impl_model__.add_getters_setters()
 
-    @staticmethod
-    def add_getters_setters(model: type):
+    @classmethod
+    def add_getters_setters(model):
         for name, value in model._fields.items():
 
             if type(value) is not type:
@@ -86,8 +86,8 @@ class Model(object):
 
         return model.clean_getters_setters()
 
-    @staticmethod
-    def clean_getters_setters(model: type):
+    @classmethod
+    def clean_getters_setters(model):
         for attr_name in dir(model):
             match attr_name[:4]:
                 case 'get_':
@@ -100,8 +100,8 @@ class Model(object):
 
     @classmethod
     def add_fields(cls, **new_fields: Dict[str, type]) -> type:
-        return (Model.model_with_fields(dict(cls._fields.items() +
-                                             new_fields.items()))
+        return (Model.model_with_fields(**dict(list(cls._fields.items()) +
+                                               list(new_fields.items())))
                 .add_getters_setters())
 
     @classmethod

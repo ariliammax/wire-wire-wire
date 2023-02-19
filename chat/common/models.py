@@ -7,20 +7,20 @@ from chat.common.util import Model
 # DATA MODELS
 
 
-Account = Model.model_from_fields(logged_in=bool,
+Account = Model.model_with_fields(logged_in=bool,
                                   username=str)
 
 
-Message = Model.model_from_fields(delivered=bool,
+Message = Model.model_with_fields(delivered=bool,
                                   message=str,
                                   recipient_username=str,
                                   sender_username=str,
                                   time=int)
 
 
-# OBJECT MODEL... TODO: add "inheritence" in chat.common.util.model_from_
-BaseRequest = Model.model_from_fields()
-BaseResponse = Model.model_from_fields(error=str)
+# OBJECT MODEL... TODO: add "inheritence" in chat.common.util.model_with_
+BaseRequest = Model.model_with_fields()
+BaseResponse = Model.model_with_fields(error=str)
 
 
 # Function 0: Log In Account

@@ -17,8 +17,29 @@ def entry(**kwargs):
     return kwargs
 
 
-def request(opcode: Opcode, *args, s: socket.socket = None, **kwargs):
-    arguments = [opcode.value] + list(args)
+def request(opcode: Opcode,
+            s: socket.socket = None,
+            username: Optional[str] = None,
+            message: Optional[str] = None,
+            recipient_username: Optional[str] = None,
+            sender_username: Optional[str] = None,
+            **kwargs):
+    args = []
+    match opcode:
+        case Opcode.LOGIN_ACCOUNT:
+            args.append(username)
+        case Opcode.CREATE_ACCOUNT:
+            args.append(username)
+        case Opcode.LIST_ACCOUNTS:
+            pass
+        case Opcode.SEND_MESSAGE:
+            args += [message, recipient_username, sender_username]
+        case Opcode.DELIVER_UNDELIVERED_MESSAGES:
+            args.append(username)
+        case Opcode.DELETE_ACCOUNT:
+            args.append(username)
+
+    arguments = [opcode.value] + args
     arguments = [str(argument) for argument in arguments]
 
     request = ",".join(arguments)

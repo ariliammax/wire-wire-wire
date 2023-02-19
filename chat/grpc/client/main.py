@@ -17,9 +17,7 @@ def entry(**kwargs):
     return kwargs
 
 
-def request(opcode: Opcode,
-            channel: grpc.Channel = None,
-            **kwargs):
+def request(opcode: Opcode, channel: grpc.Channel = None, **kwargs):
     stub = proto_pb2_grpc.ChatStub(channel)
 
     match opcode:
