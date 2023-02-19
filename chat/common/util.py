@@ -28,6 +28,13 @@ class Model(object):
     _reserved_fields = ['_fields',
                         '_reserved_fields']
 
+    def serialize(self) -> bytes:
+        raise NotImplementedError()
+
+    @classmethod
+    def deserialize(cls, data: bytes):
+        raise NotImplementedError()
+
     @staticmethod
     def model_with_fields(**fields: Dict[str, type]) -> type:
         for name in fields:
@@ -78,9 +85,13 @@ class Model(object):
         # the `__init__` we'll add to `model`.
         # this might get weird with inheritence, but as long as the inherited
         # call `add_getters_setters`, then we should be good.
-        def __impl_init__(self) -> model:
-            for name in model._fields:
-                setattr(self, f'_{name!s}', None)
+        def __impl_init__(self, **kwargs) -> model:
+            for name in self._fields:
+                if name in kwargs:
+                    getattr(self, f'set_{name!s}', lambda _: _)(kwargs
+                                                                [name])
+                else:
+                    setattr(self, f'_{name!s}', None)
 
         setattr(model, '__init__', __impl_init__)
 

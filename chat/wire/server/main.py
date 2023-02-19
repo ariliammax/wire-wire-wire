@@ -3,7 +3,7 @@
 
 from chat.common.config import Config
 from chat.common.operations import Opcode
-from chat.common.server.events import Events
+from chat.common.server.events import Events, EventsRouter
 from typing import Optional
 
 import socket
@@ -22,36 +22,33 @@ def handle_connection(connection):
         # then just check the db to see if still exists each loop.
         # hacks work ya know.
         while True:
-            request = connection.recv(1024).decode("utf-8")
+            request = connection.recv(1024).decode('utf-8')
             if len(request) == 0:
                 # This is a signal of disconnect.
                 # and so if we update `._logged_in` on the loop exit
                 break
 
-            arguments = request.split(",")
-            opcode = Opcode(int(arguments[0]))
+            args = request.split(',')
+            kwargs = {}
+            opcode = Opcode(int(args[0]))
 
             match opcode:
                 case Opcode.CREATE_ACCOUNT:
-                    username = arguments[1]
-                    response = Events.create_account(username=username)
+                    kwargs['username'] = args[1]
                 case Opcode.LIST_ACCOUNTS:
-                    response = Events.list_accounts()
+                    pass
                 case Opcode.SEND_MESSAGE:
-                    msg = arguments[1]
-                    recipient = arguments[2]
-                    sender = arguments[3]
-                    response = Events.send_message(
-                        message=msg,
-                        recipient_username=recipient,
-                        sender_username=sender)
+                    kwargs['message'] = args[1]
+                    kwargs['recipient_username'] = args[2]
+                    kwargs['sender_username'] = username
                 case Opcode.DELIVER_UNDELIVERED_MESSAGES:
-                    response = Events.deliver_undelivered_messages(
-                        username=username)
+                    kwargs['username'] = username
                 case Opcode.DELETE_ACCOUNT:
-                    response = Events.delete_account(username=username)
+                    kwargs['username'] = username
 
-            connection.sendall(response.encode("utf-8"))
+            response = EventsRouter[opcode](**kwargs)
+
+            connection.sendall(response.encode('utf-8'))
     except Exception:
         pass
 

@@ -18,7 +18,7 @@ def main(entry: Callable, request: Callable, handler: Callable, **kwargs):
     try:
         kwargs = entry(**kwargs)
 
-        username = input("> Username: ")
+        username = input('> Username: ')
 
         response = request(opcode=Opcode.CREATE_ACCOUNT,
                            username=username,
@@ -26,12 +26,12 @@ def main(entry: Callable, request: Callable, handler: Callable, **kwargs):
         print(response)
 
         while True:
-            print("Do you want to...\n"
-                  "1) List Accounts\n"
-                  "2) Send a Message\n"
-                  "3) Deliver Undelivered Messages\n"
-                  "4) Delete Account\n")
-            opcode = input("> 1/2/3/4: ")
+            print('Do you want to...\n'
+                  '1) List Accounts\n'
+                  '2) Send a Message\n'
+                  '3) Deliver Undelivered Messages\n'
+                  '4) Delete Account\n')
+            opcode = input('> 1/2/3/4: ')
 
             # + 1 since Opcode.CREATE_ACCOUNT has value 0.
             opcode = Opcode(int(opcode) + 1)
@@ -39,27 +39,28 @@ def main(entry: Callable, request: Callable, handler: Callable, **kwargs):
                 case Opcode.LIST_ACCOUNTS:
                     response = request(opcode=Opcode.LIST_ACCOUNTS,
                                        **kwargs)
-                    print("\nAccounts:\n[" + response + "]\n")
+                    print('\nAccounts:\n[' + response + ']\n')
                 case Opcode.SEND_MESSAGE:
-                    recipient = input("> Recipient: ")
-                    message = input("> Message: ")
+                    recipient = input('> Recipient: ')
+                    message = input('> Message: ')
                     response = request(
                         opcode=Opcode.SEND_MESSAGE,
                         message=message,
                         recipient_username=recipient,
                         sender_username=username,
                         **kwargs)
-                    print("\nYour message was sent!\n")
+                    print('\nYour message was sent!\n')
                 case Opcode.DELIVER_UNDELIVERED_MESSAGES:
                     response = request(opcode=Opcode
                                        .DELIVER_UNDELIVERED_MESSAGES,
                                        username=username,
                                        **kwargs)
-                    print("\n" + response + "\n")
+                    print('\n' + response + '\n')
                 case Opcode.DELETE_ACCOUNT:
                     response = request(opcode=Opcode.DELETE_ACCOUNT,
                                        username=username,
                                        **kwargs)
                     break
+
     except Exception as err:
         handler(err=err, **kwargs)

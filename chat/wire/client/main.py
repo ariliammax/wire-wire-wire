@@ -42,10 +42,10 @@ def request(opcode: Opcode,
     arguments = [opcode.value] + args
     arguments = [str(argument) for argument in arguments]
 
-    request = ",".join(arguments)
-    s.sendall(request.encode("utf-8"))
+    request = ','.join(arguments)
+    s.sendall(request.encode('utf-8'))
 
-    response = s.recv(1024).decode("utf-8")
+    response = s.recv(1024).decode('utf-8')
     return response
 
 

@@ -18,7 +18,9 @@ Message = Model.model_with_fields(delivered=bool,
                                   time=int)
 
 
-# OBJECT MODEL... TODO: add "inheritence" in chat.common.util.model_with_
+# OBJECT MODELS
+
+# these are the basic ones.
 BaseRequest = Model.model_with_fields()
 BaseResponse = Model.model_with_fields(error=str)
 
