@@ -2,7 +2,7 @@
 # in chat.grpc.server
 
 from chat.common.config import Config
-from chat.common.serve.events import Events
+from chat.common.server.events import Events
 from concurrent import futures
 
 import grpc
