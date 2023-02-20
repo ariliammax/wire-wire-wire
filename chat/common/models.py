@@ -62,8 +62,32 @@ class BaseRequest(Model.model_with_fields(opcode=int)):
         return __impl_class__
 
 
-class BaseResponse(BaseRequest, BaseRequest.add_fields(error=str)):
-    pass
+class BaseResponse(BaseRequest.add_fields(error=str)):
+
+    @staticmethod
+    def add_fields_with_opcode(opcode: int,
+                               field_defaults: Dict[str, object] = {},
+                               field_deserializers: Dict[str, Callable] = {},
+                               field_serializers: Dict[str, Callable] = {},
+                               order_of_fields: List[str] = None,
+                               **new_fields: Dict[str, type]):
+        class __impl_class__(
+            BaseResponse.add_fields(
+                field_defaults=dict(list(field_defaults.items()) +
+                                    list(dict(opcode=opcode.value).items())),
+                field_deserializers=dict(list(field_deserializers.items()) +
+                                         [('opcode',
+                                           BaseRequest.deserialize_opcode)]),
+                field_serializers=dict(list(field_serializers.items()) +
+                                       [('opcode',
+                                         BaseRequest.serialize_opcode)]),
+                order_of_fields=(order_of_fields or
+                                 (['opcode'] +
+                                  list(new_fields.keys()))),
+                **new_fields)):
+            pass
+
+        return __impl_class__
 
 
 # Function 0: Log In Account

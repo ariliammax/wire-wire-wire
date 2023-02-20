@@ -12,35 +12,42 @@ import chat.grpc.grpcio.proto_pb2_grpc as proto_pb2_grpc
 
 class ChatServicer(proto_pb2_grpc.ChatServicer):
     def LogInAccount(self, request, context):
-        error = Events.create_account(username=request.username)
-        return proto_pb2.LogInAccountResponse(error=error)
+        response = Events.login_account(username=request.username)
+        return proto_pb2.LogInAccountResponse(error=response.get_error())
 
     def CreateAccount(self, request, context):
-        error = Events.create_account(username=request.username)
-        return proto_pb2.CreateAccountResponse(error=error)
+        response = Events.create_account(username=request.username)
+        return proto_pb2.CreateAccountResponse(error=response.get_error())
 
     def ListAccounts(self, request, context):
-        error = Events.list_accounts()
-        accounts = []
-        return proto_pb2.ListAccountsResponse(error=error,
-                                              accounts=accounts)
+        response = Events.list_accounts()
+        return proto_pb2.ListAccountsResponse(
+            error=response.get_error(),
+            accounts=[proto_pb2.Account(username=acc.get_username())
+                      for acc in response.get_accounts()])
 
     def SendMessage(self, request, context):
-        error = Events.send_message(message=request.message,
-                                    recipient_username=request
-                                    .recipient_username,
-                                    sender_username=request.sender_username)
-        return proto_pb2.SendMessageResponse(error=error)
+        response = Events.send_message(
+            message=request.message,
+            recipient_username=request.recipient_username,
+            sender_username=request.sender_username)
+        return proto_pb2.SendMessageResponse(error=response.get_error())
 
     def DeliverUndeliveredMessages(self, request, context):
-        error = Events.deliver_undelivered_messages(username=request.username)
-        messages = []
-        return proto_pb2.DeliverUndeliveredMessagesResponse(error=error,
-                                                            messages=messages)
+        response = Events.deliver_undelivered_messages(
+            username=request.username)
+        return proto_pb2.DeliverUndeliveredMessagesResponse(
+            error=response.get_error(),
+            messages=[proto_pb2.Message(sender_username=msg
+                                        .get_sender_username(),
+                                        recipient_username=msg
+                                        .get_recipient_username(),
+                                        message=msg.get_message())
+                      for msg in response.get_messages()])
 
     def DeleteAccount(self, request, context):
-        error = Events.delete_account(username=request.username)
-        return proto_pb2.DeleteAccountResponse(error=error)
+        response = Events.delete_account(username=request.username)
+        return proto_pb2.DeleteAccountResponse(error=response.get_error())
 
 
 def main():

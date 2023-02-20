@@ -34,7 +34,7 @@ class Events:
             #   f'exists... logging in!')
 
         Database.upsert_account(account)
-        return LogInAccountResponse()
+        return LogInAccountResponse(error='')
 
     @staticmethod
     def create_account(username: str, **kwargs):
@@ -50,12 +50,13 @@ class Events:
             #   f'exists... logging in!')
 
         Database.upsert_account(account)
-        return CreateAccountResponse()
+        return CreateAccountResponse(error='')
 
     @staticmethod
     def list_accounts(**kwargs):
         return ListAccountsResponse(
-            accounts=[acc for _, acc in Database.get_accounts().items()])
+            accounts=[acc for _, acc in Database.get_accounts().items()],
+            error='')
 
     @staticmethod
     def send_message(message: str,
@@ -69,7 +70,7 @@ class Events:
                    .set_sender_username(sender_username)
                    .set_time(0))
         Database.upsert_message(message)
-        return SendMessageResponse()
+        return SendMessageResponse(error='')
 
     @staticmethod
     def deliver_undelivered_messages(username: str, **kwargs):
@@ -82,13 +83,14 @@ class Events:
         else:
             messages = sum([msg for _, msg in messages_by_sender.items()],
                            start=[])
-            return DeliverUndeliveredMessagesResponse(messages=messages)
+            return DeliverUndeliveredMessagesResponse(error='',
+                                                      messages=messages)
 
     @staticmethod
     def delete_account(username: str, **kwargs):
         Database.delete_account(Account()
                                 .set_username(username))
-        return DeleteAccountResponse()
+        return DeleteAccountResponse(error='')
 
     @staticmethod
     def account_logout(username: str, **kwargs):
