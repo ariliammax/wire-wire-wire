@@ -36,7 +36,12 @@ CreateAccountResponse = BaseResponse.add_fields()
 
 # Function 2: List Accounts
 ListAccountsRequest = BaseRequest.add_fields()
-ListAccountsResponse = BaseResponse.add_fields(accounts=list)
+ListAccountsResponse = BaseResponse.add_fields(
+    accounts=list,
+    field_deserializers=dict(
+        accounts=Model.default_list_deserializer(Account)),
+    field_serializers=dict(
+        accounts=Model.default_list_serializer(Account)))
 
 
 # Function 3: Send Message
@@ -48,7 +53,12 @@ SendMessageResponse = BaseResponse.add_fields()
 
 # Function 4: Deliver Undelivered Messages
 DeliverUndeliveredMessagesRequest = BaseRequest.add_fields(username=str)
-DeliverUndeliveredMessagesResponse = BaseResponse.add_fields(messages=list)
+DeliverUndeliveredMessagesResponse = BaseResponse.add_fields(
+    messages=list,
+    field_deserializers=dict(
+        messages=Model.default_list_deserializer(Message)),
+    field_serializers=dict(
+        messages=Model.default_list_serializer(Message)))
 
 
 # Function 5: Delete Account

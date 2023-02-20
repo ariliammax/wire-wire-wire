@@ -1,8 +1,11 @@
 # util.py
 # in chat.common
 
+import builtins
+
+from chat.common.serialization import SerializationUtils
 from enum import Enum, EnumMeta
-from typing import Dict, Optional
+from typing import Callable, Dict, List, Optional, Type
 
 
 class Interface(object):
@@ -22,28 +25,133 @@ class Model(object):
     """
     _fields: Dict[str, type] = {}
 
+    _field_deserializers: Dict[str, Callable] = {}
+
+    _field_serializers: Dict[str, Callable] = {}
+
+    _order_of_fields: List[str] = {}
+
     # TODO: is this necessary? I think not necessarily, but will
     # be at a minimum useful for awkard class attributes sharing object
     # attributes names, so best to just discourage it entirely.
-    _reserved_fields = ['_fields',
-                        '_reserved_fields']
+    _reserved_fields = ['fields',
+                        'field_deserializers',
+                        'field_serializers',
+                        'order_of_fields',
+                        'reserved_fields']
 
-    def serialize(self) -> bytes:
-        raise NotImplementedError()
+    @staticmethod
+    def default_deserializer(t: Type) -> Optional[Callable]:
+        match t:
+            case builtins.bool:
+                return SerializationUtils.deserialize_bool
+            case builtins.int:
+                return SerializationUtils.deserialize_int
+            case builtins.str:
+                return SerializationUtils.deserialize_str
+            case _:
+                if issubclass(t, Model):
+                    return t.deserialize
+
+    @staticmethod
+    def default_serializer(t: Type) -> Optional[Callable]:
+        match t:
+            case builtins.bool:
+                return SerializationUtils.serialize_bool
+            case builtins.int:
+                return SerializationUtils.serialize_int
+            case builtins.str:
+                return SerializationUtils.serialize_str
+            case _:
+                if issubclass(t, Model):
+                    return lambda x: x.serialize()
+                return None
+
+    @staticmethod
+    def default_list_deserializer(t: Type) -> Callable:
+        return (lambda d: SerializationUtils.deserialize_list(
+                    d,
+                    Model.default_deserializer(t),
+                    Model.default_serializer(t)))
+
+    @staticmethod
+    def default_list_serializer(t: Type) -> Callable:
+        return (lambda v: SerializationUtils.serialize_list(
+                    v,
+                    Model.default_serializer(t)))
 
     @classmethod
     def deserialize(cls, data: bytes):
-        raise NotImplementedError()
+        # TODO: this can get screw-y with optionals.
+        # a janky way of doing it without more code would be just doing it
+        # on lists (of max len 1).
+        obj = cls()
+        for name in cls._order_of_fields:
+            deserializer = cls._field_deserializers[name]
+            serializer = cls._field_serializers[name]
+
+            field_val = deserializer(data)
+            length = len(serializer(field_val))
+
+            getattr(obj, f'set_{name!s}', lambda _: obj)(field_val)
+            try:
+                data = data[length:]
+            except Exception:
+                break
+        return obj
+
+    def serialize(self) -> bytes:
+        return b''.join(self._field_serializers[name](getattr(self,
+                                                              f'get_{name!s}',
+                                                              lambda: None)())
+                        for name in self._order_of_fields)
+
+    def as_model(self, model: Type):
+        obj = model()
+        for name in self._fields:
+            getattr(obj, f'set_{name!s}', lambda _: obj)(
+                getattr(self, f'get_{name!s}', lambda: None)())
+        return obj
 
     @staticmethod
-    def model_with_fields(**fields: Dict[str, type]) -> type:
+    def model_with_fields(field_deserializers: Dict[str, Callable] = {},
+                          field_serializers: Dict[str, Callable] = {},
+                          order_of_fields: List[str] = None,
+                          **fields: Dict[str, type]) -> type:
         for name in fields:
             if name in Model._reserved_fields:
                 raise ValueError(f'Field \'{name!s}\' is a reserved name.')
 
+        # this gives the explicit order, or just uses the keys.
+        order = order_of_fields or list(fields.keys())
+
+        # set default (de)serializers, if not set
+        for name, t in fields.items():
+            deserialize = field_deserializers.get(
+                name, Model.default_deserializer(t))
+            serialize = field_serializers.get(
+                name, Model.default_serializer(t))
+
+            if serialize is None or deserialize is None:
+                raise ValueError(f'Field {name!s} requires a ' +
+                                 ('(de)' if deserialize is None
+                                  and serialize is None else
+                                  'de' if deserialize is None else '') +
+                                 'serializer.')
+
+            field_deserializers[name] = deserialize
+            field_serializers[name] = serialize
+
         class __impl_model__(Model):
             # copy is likely safest here...
             _fields = {k: v for k, v in fields.items()}
+
+            _field_deserializers = {k: v
+                                    for k, v in field_deserializers.items()}
+
+            _field_serializers = {k: v for k, v in field_serializers.items()}
+
+            _order_of_fields = order
 
         return __impl_model__.add_getters_setters()
 
@@ -110,21 +218,34 @@ class Model(object):
         return model
 
     @classmethod
-    def add_fields(cls, **new_fields: Dict[str, type]) -> type:
-        return (Model.model_with_fields(**dict(list(cls._fields.items()) +
-                                               list(new_fields.items())))
-                .add_getters_setters())
+    def add_fields(cls,
+                   field_deserializers: Dict[str, Callable] = {},
+                   field_serializers: Dict[str, Callable] = {},
+                   order_of_fields: List[str] = None,
+                   **new_fields: Dict[str, type]) -> type:
+        return Model.model_with_fields(
+            field_deserializers=field_deserializers,
+            field_serializers=field_serializers,
+            order_of_fields=order_of_fields,
+            **dict(list(cls._fields.items()) +
+                   list(new_fields.items()))).add_getters_setters()
 
     @classmethod
-    def omit_fields(cls, **rm_fields: Dict[str, type]) -> type:
+    def omit_fields(cls,
+                    field_deserializers: Dict[str, Callable] = {},
+                    field_serializers: Dict[str, Callable] = {},
+                    order_of_fields: List[str] = None,
+                    **rm_fields: Dict[str, type]) -> type:
         for fname in rm_fields:
             if fname not in cls._fields:
                 raise ValueError(f'Cannot omit field \'{fname!s}\'; '
                                  f'it is not a field of {cls!s}.')
-        return (Model.model_with_fields({n: t
-                                         for n, t in cls._fields.items()
-                                         if n not in rm_fields})
-                .add_getters_setters())
+        return Model.model_with_fields(
+            field_deserializers=field_deserializers,
+            field_serializers=field_serializers,
+            order_of_fields=order_of_fields,
+            **{n: t for n, t in cls._fields.items()
+               if n not in rm_fields}).add_getters_setters()
 
 
 def model_from_proto(iface: type) -> type:
