@@ -3,6 +3,20 @@
 
 from chat.common.client.events import main as client_main
 from chat.common.config import Config
+from chat.common.models import (
+    CreateAccountRequest,
+    CreateAccountResponse,
+    DeleteAccountRequest,
+    DeleteAccountResponse,
+    DeliverUndeliveredMessagesRequest,
+    DeliverUndeliveredMessagesResponse,
+    ListAccountsRequest,
+    ListAccountsResponse,
+    LogInAccountRequest,
+    LogInAccountResponse,
+    SendMessageRequest,
+    SendMessageResponse,
+)
 from chat.common.operations import Opcode
 from typing import Optional
 
@@ -24,29 +38,42 @@ def request(opcode: Opcode,
             recipient_username: Optional[str] = None,
             sender_username: Optional[str] = None,
             **kwargs):
-    args = []
+    object = None
     match opcode:
         case Opcode.LOGIN_ACCOUNT:
-            args.append(username)
+            object = LogInAccountRequest(username=username)
         case Opcode.CREATE_ACCOUNT:
-            args.append(username)
+            object = CreateAccountRequest(username=username)
         case Opcode.LIST_ACCOUNTS:
-            pass
+            object = ListAccountsRequest()
         case Opcode.SEND_MESSAGE:
-            args += [message, recipient_username, sender_username]
+            object = SendMessageRequest(
+                message=message,
+                recipient_username=recipient_username,
+                sender_username=sender_username,
+            )
         case Opcode.DELIVER_UNDELIVERED_MESSAGES:
-            args.append(username)
+            object = DeliverUndeliveredMessagesRequest(username=username)
         case Opcode.DELETE_ACCOUNT:
-            args.append(username)
+            object = DeleteAccountRequest(username=username)
 
-    arguments = [opcode.value] + args
-    arguments = [str(argument) for argument in arguments]
+    request = object.serialize()
+    s.sendall(request)
+    response = s.recv(1024)
 
-    request = ','.join(arguments)
-    s.sendall(request.encode('utf-8'))
-
-    response = s.recv(1024).decode('utf-8')
-    return response
+    match opcode:
+        case Opcode.LOGIN_ACCOUNT:
+            return LogInAccountResponse.deserialize(response)
+        case Opcode.CREATE_ACCOUNT:
+            return CreateAccountResponse.deserialize(response)
+        case Opcode.LIST_ACCOUNTS:
+            return ListAccountsResponse.deserialize(response)
+        case Opcode.SEND_MESSAGE:
+            return SendMessageResponse.deserialize(response)
+        case Opcode.DELIVER_UNDELIVERED_MESSAGES:
+            return DeliverUndeliveredMessagesResponse.deserialize(response)
+        case Opcode.DELETE_ACCOUNT:
+            return DeleteAccountResponse.deserialize(response)
 
 
 def handler(err: Exception, s: Optional[socket.socket] = None, **kwargs):

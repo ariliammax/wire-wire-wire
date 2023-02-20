@@ -2,6 +2,13 @@
 # in chat.wire.server
 
 from chat.common.config import Config
+from chat.common.models import (
+    BaseRequest,
+    CreateAccountRequest,
+    DeleteAccountRequest,
+    DeliverUndeliveredMessagesRequest,
+    SendMessageRequest,
+)
 from chat.common.operations import Opcode
 from chat.common.server.events import Events, EventsRouter
 from typing import Optional
@@ -22,35 +29,39 @@ def handle_connection(connection):
         # then just check the db to see if still exists each loop.
         # hacks work ya know.
         while True:
-            request = connection.recv(1024).decode('utf-8')
+            request = connection.recv(1024)
             if len(request) == 0:
                 # This is a signal of disconnect.
                 # and so if we update `._logged_in` on the loop exit
                 break
 
-            args = request.split(',')
             kwargs = {}
-            opcode = Opcode(int(args[0]))
+            opcode = BaseRequest.peek_opcode(request)
 
             match opcode:
-                case Opcode.CREATE_ACCOUNT:
-                    kwargs['username'] = args[1]
+                case Opcode.LOGIN_ACCOUNT | Opcode.CREATE_ACCOUNT:
+                    req = CreateAccountRequest.deserialize(request)
+                    kwargs['username'] = req.get_username()
                 case Opcode.LIST_ACCOUNTS:
                     pass
                 case Opcode.SEND_MESSAGE:
-                    kwargs['message'] = args[1]
-                    kwargs['recipient_username'] = args[2]
-                    kwargs['sender_username'] = username
+                    req = SendMessageRequest.deserialize(request)
+                    kwargs['message'] = req.get_message()
+                    kwargs['recipient_username'] = req.get_recipient_username()
+                    kwargs['sender_username'] = req.get_sender_username()
                 case Opcode.DELIVER_UNDELIVERED_MESSAGES:
-                    kwargs['username'] = username
+                    req = DeliverUndeliveredMessagesRequest.deserialize(
+                        request)
+                    kwargs['username'] = req.get_username()
                 case Opcode.DELETE_ACCOUNT:
-                    kwargs['username'] = username
+                    req = DeleteAccountRequest.deserialize(request)
+                    kwargs['username'] = req.get_username()
 
             response = EventsRouter[opcode](**kwargs)
 
-            connection.sendall(response.encode('utf-8'))
-    except Exception:
-        pass
+            connection.sendall(response.serialize())
+    except Exception as e:
+        raise e
 
     if username is not None:
         # update the logged in status... don't check for multiple devices

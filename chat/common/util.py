@@ -25,6 +25,8 @@ class Model(object):
     """
     _fields: Dict[str, type] = {}
 
+    _field_defaults: Dict[str, object] = {}
+
     _field_deserializers: Dict[str, Callable] = {}
 
     _field_serializers: Dict[str, Callable] = {}
@@ -35,6 +37,7 @@ class Model(object):
     # be at a minimum useful for awkard class attributes sharing object
     # attributes names, so best to just discourage it entirely.
     _reserved_fields = ['fields',
+                        'field_defaults'
                         'field_deserializers',
                         'field_serializers',
                         'order_of_fields',
@@ -114,7 +117,8 @@ class Model(object):
         return obj
 
     @staticmethod
-    def model_with_fields(field_deserializers: Dict[str, Callable] = {},
+    def model_with_fields(field_defaults: Dict[str, object] = {},
+                          field_deserializers: Dict[str, Callable] = {},
                           field_serializers: Dict[str, Callable] = {},
                           order_of_fields: List[str] = None,
                           **fields: Dict[str, type]) -> type:
@@ -145,6 +149,8 @@ class Model(object):
         class __impl_model__(Model):
             # copy is likely safest here...
             _fields = {k: v for k, v in fields.items()}
+
+            _field_defaults = {k: v for k, v in field_defaults.items()}
 
             _field_deserializers = {k: v
                                     for k, v in field_deserializers.items()}
@@ -199,7 +205,9 @@ class Model(object):
                     getattr(self, f'set_{name!s}', lambda _: _)(kwargs
                                                                 [name])
                 else:
-                    setattr(self, f'_{name!s}', None)
+                    setattr(self,
+                            f'_{name!s}',
+                            self._field_defaults.get(name, None))
 
         setattr(model, '__init__', __impl_init__)
 
@@ -219,19 +227,25 @@ class Model(object):
 
     @classmethod
     def add_fields(cls,
+                   field_defaults: Dict[str, object] = {},
                    field_deserializers: Dict[str, Callable] = {},
                    field_serializers: Dict[str, Callable] = {},
                    order_of_fields: List[str] = None,
                    **new_fields: Dict[str, type]) -> type:
         return Model.model_with_fields(
-            field_deserializers=field_deserializers,
-            field_serializers=field_serializers,
+            field_defaults=dict(list(cls._field_defaults.items()) +
+                                list(field_defaults.items())),
+            field_deserializers=dict(list(cls._field_deserializers.items()) +
+                                     list(field_deserializers.items())),
+            field_serializers=dict(list(cls._field_serializers.items()) +
+                                   list(field_serializers.items())),
             order_of_fields=order_of_fields,
             **dict(list(cls._fields.items()) +
                    list(new_fields.items()))).add_getters_setters()
 
     @classmethod
     def omit_fields(cls,
+                    field_defaults: Dict[str, object] = {},
                     field_deserializers: Dict[str, Callable] = {},
                     field_serializers: Dict[str, Callable] = {},
                     order_of_fields: List[str] = None,
@@ -241,8 +255,12 @@ class Model(object):
                 raise ValueError(f'Cannot omit field \'{fname!s}\'; '
                                  f'it is not a field of {cls!s}.')
         return Model.model_with_fields(
-            field_deserializers=field_deserializers,
-            field_serializers=field_serializers,
+            field_defaults=dict(list(cls._field_defaults.items()) +
+                                list(field_defaults.items())),
+            field_deserializers=dict(list(cls._field_deserializers.items()) +
+                                     list(field_deserializers.items())),
+            field_serializers=dict(list(cls._field_serializers.items()) +
+                                   list(field_serializers.items())),
             order_of_fields=order_of_fields,
             **{n: t for n, t in cls._fields.items()
                if n not in rm_fields}).add_getters_setters()

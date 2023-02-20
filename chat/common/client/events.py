@@ -33,13 +33,16 @@ def main(entry: Callable, request: Callable, handler: Callable, **kwargs):
                   '4) Delete Account\n')
             opcode = input('> 1/2/3/4: ')
 
+            if opcode not in ['1', '2', '3', '4']:
+                continue
+
             # + 1 since Opcode.CREATE_ACCOUNT has value 0.
             opcode = Opcode(int(opcode) + 1)
             match opcode:
                 case Opcode.LIST_ACCOUNTS:
                     response = request(opcode=Opcode.LIST_ACCOUNTS,
                                        **kwargs)
-                    print('\nAccounts:\n[' + response + ']\n')
+                    print('\nAccounts:\n[' + str(response) + ']\n')
                 case Opcode.SEND_MESSAGE:
                     recipient = input('> Recipient: ')
                     message = input('> Message: ')
@@ -55,7 +58,7 @@ def main(entry: Callable, request: Callable, handler: Callable, **kwargs):
                                        .DELIVER_UNDELIVERED_MESSAGES,
                                        username=username,
                                        **kwargs)
-                    print('\n' + response + '\n')
+                    print('\n' + str(response) + '\n')
                 case Opcode.DELETE_ACCOUNT:
                     response = request(opcode=Opcode.DELETE_ACCOUNT,
                                        username=username,
