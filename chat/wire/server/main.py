@@ -59,6 +59,9 @@ def handle_connection(connection):
 
             response = EventsRouter[opcode](**kwargs)
 
+            print(response.get_error())
+            print(response._fields)
+            print(response.serialize())
             connection.sendall(response.serialize())
     except Exception as e:
         raise e

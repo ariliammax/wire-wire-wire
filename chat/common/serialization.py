@@ -26,7 +26,7 @@ class SerializationUtils:
 
     @staticmethod
     def serialize_bool(val: bool) -> bytes:
-        return val.to_bytes(1, byteorder='little')
+        return bool(val).to_bytes(1, byteorder='little')
 
     @staticmethod
     def deserialize_int(data: bytes) -> int:
@@ -34,7 +34,7 @@ class SerializationUtils:
 
     @staticmethod
     def serialize_int(val: int, length: int = INT_LEN_BITS) -> bytes:
-        return val.to_bytes(length, byteorder='little')
+        return int(val).to_bytes(length, byteorder='little')
 
     @staticmethod
     def deserialize_str(data: bytes) -> str:
@@ -43,7 +43,7 @@ class SerializationUtils:
 
     @staticmethod
     def serialize_str(val: str) -> bytes:
-        encoded = val.encode('utf-8')
+        encoded = str(val or '').encode('utf-8')
         return SerializationUtils.serialize_int(
             len(encoded),
             STR_LEN_BITS) + encoded
@@ -74,6 +74,8 @@ class SerializationUtils:
     def serialize_list(val: list,
                        item_serialize: Callable,
                        remain: Optional[int] = None) -> bytes:
+        if val is None:
+            val = []
         if remain is None:
             return (SerializationUtils.serialize_int(len(val),
                                                      LIST_LEN_BITS) +

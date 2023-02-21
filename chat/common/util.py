@@ -106,7 +106,8 @@ class Model(object):
     def serialize(self) -> bytes:
         return b''.join(self._field_serializers[name](getattr(self,
                                                               f'get_{name!s}',
-                                                              lambda: None)())
+                                                              lambda:
+                                                              None)())
                         for name in self._order_of_fields)
 
     def as_model(self, model: Type):
@@ -223,6 +224,9 @@ class Model(object):
                 case 'set_':
                     if attr_name[4:] not in model._fields:
                         setattr(model, attr_name, None)
+        for name in model._fields:
+            if name not in model._order_of_fields:
+                model._order_of_fields.append(name)
         return model
 
     @classmethod
