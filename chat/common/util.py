@@ -31,6 +31,8 @@ class Model(object):
 
     _field_serializers: Dict[str, Callable] = {}
 
+    _fields_list_nested: Dict[str, type] = {}
+
     _order_of_fields: List[str] = {}
 
     # TODO: is this necessary? I think not necessarily, but will
@@ -41,6 +43,7 @@ class Model(object):
                         'field_deserializers',
                         'field_serializers',
                         'order_of_fields',
+                        'fields_list_nested',
                         'reserved_fields']
 
     @staticmethod
@@ -53,8 +56,11 @@ class Model(object):
             case builtins.str:
                 return SerializationUtils.deserialize_str
             case _:
+                if t is None:
+                    return None
                 if issubclass(t, Model):
                     return t.deserialize
+                return None
 
     @staticmethod
     def default_serializer(t: Type) -> Optional[Callable]:
@@ -66,6 +72,8 @@ class Model(object):
             case builtins.str:
                 return SerializationUtils.serialize_str
             case _:
+                if t is None:
+                    return None
                 if issubclass(t, Model):
                     return lambda x: x.serialize()
                 return None
@@ -110,6 +118,20 @@ class Model(object):
                                                               None)())
                         for name in self._order_of_fields)
 
+    @classmethod
+    def from_grpc_model(model, grpc_obj):
+        obj = model()
+        for name, t in model._fields.items():
+            val = getattr(grpc_obj, name, None)
+            if t is list:
+                nested_model = model._fields_list_nested.get(name, None)
+                if nested_model:
+                    val = [nested_model.from_grpc_model(v)
+                           for v in val or []]
+
+            getattr(obj, f'set_{name!s}', lambda _: obj)(val)
+        return obj
+
     def as_model(self, model: Type):
         obj = model()
         for name in self._fields:
@@ -122,6 +144,7 @@ class Model(object):
                           field_deserializers: Dict[str, Callable] = {},
                           field_serializers: Dict[str, Callable] = {},
                           order_of_fields: List[str] = None,
+                          fields_list_nested: Dict[str, type] = {},
                           **fields: Dict[str, type]) -> type:
         for name in fields:
             if name in Model._reserved_fields:
@@ -133,9 +156,19 @@ class Model(object):
         # set default (de)serializers, if not set
         for name, t in fields.items():
             deserialize = field_deserializers.get(
-                name, Model.default_deserializer(t))
+                name,
+                (Model.default_list_deserializer(
+                    fields_list_nested.get(name, None))
+                 if name in fields_list_nested else None)
+                if t is list else
+                Model.default_deserializer(t))
             serialize = field_serializers.get(
-                name, Model.default_serializer(t))
+                name,
+                (Model.default_list_serializer(
+                    fields_list_nested.get(name, None))
+                 if name in fields_list_nested else None)
+                if t is list else
+                Model.default_serializer(t))
 
             if serialize is None or deserialize is None:
                 raise ValueError(f'Field {name!s} requires a ' +
@@ -159,6 +192,8 @@ class Model(object):
             _field_serializers = {k: v for k, v in field_serializers.items()}
 
             _order_of_fields = order
+
+            _fields_list_nested = {k: v for k, v in fields_list_nested.items()}
 
         return __impl_model__.add_getters_setters()
 
@@ -235,6 +270,7 @@ class Model(object):
                    field_deserializers: Dict[str, Callable] = {},
                    field_serializers: Dict[str, Callable] = {},
                    order_of_fields: List[str] = None,
+                   fields_list_nested: Dict[str, type] = {},
                    **new_fields: Dict[str, type]) -> type:
         return Model.model_with_fields(
             field_defaults=dict(list(cls._field_defaults.items()) +
@@ -243,6 +279,8 @@ class Model(object):
                                      list(field_deserializers.items())),
             field_serializers=dict(list(cls._field_serializers.items()) +
                                    list(field_serializers.items())),
+            fields_list_nested=dict(list(cls._fields_list_nested.items()) +
+                                    list(fields_list_nested.items())),
             order_of_fields=order_of_fields,
             **dict(list(cls._fields.items()) +
                    list(new_fields.items()))).add_getters_setters()
@@ -253,6 +291,7 @@ class Model(object):
                     field_deserializers: Dict[str, Callable] = {},
                     field_serializers: Dict[str, Callable] = {},
                     order_of_fields: List[str] = None,
+                    fields_list_nested: Dict[str, type] = {},
                     **rm_fields: Dict[str, type]) -> type:
         for fname in rm_fields:
             if fname not in cls._fields:
@@ -266,6 +305,8 @@ class Model(object):
             field_serializers=dict(list(cls._field_serializers.items()) +
                                    list(field_serializers.items())),
             order_of_fields=order_of_fields,
+            fields_list_nested=dict(list(cls._fields_list_nested.items()) +
+                                    list(fields_list_nested.items())),
             **{n: t for n, t in cls._fields.items()
                if n not in rm_fields}).add_getters_setters()
 

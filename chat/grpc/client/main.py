@@ -3,6 +3,14 @@
 
 from chat.common.client.events import main as client_main
 from chat.common.config import Config
+from chat.common.models import (
+    CreateAccountResponse,
+    DeleteAccountResponse,
+    DeliverUndeliveredMessagesResponse,
+    ListAccountsResponse,
+    LogInAccountResponse,
+    SendMessageResponse,
+)
 from chat.common.operations import Opcode
 from typing import Optional
 
@@ -22,32 +30,38 @@ def request(opcode: Opcode, channel: grpc.Channel = None, **kwargs):
 
     match opcode:
         case Opcode.LOGIN_ACCOUNT:
-            request = proto_pb2.LogInAccountRequest(
+            req = proto_pb2.LogInAccountRequest(
                 username=kwargs.get('username', None))
-            response = stub.LogInAccount(request)
+            res = stub.LogInAccount(req)
+            response = LogInAccountResponse.from_grpc_model(res)
         case Opcode.CREATE_ACCOUNT:
-            request = proto_pb2.CreateAccountRequest(
+            req = proto_pb2.CreateAccountRequest(
                 username=kwargs.get('username', None))
-            response = stub.CreateAccount(request)
+            res = stub.CreateAccount(req)
+            response = CreateAccountResponse.from_grpc_model(res)
         case Opcode.LIST_ACCOUNTS:
-            request = proto_pb2.ListAccountsRequest()
-            response = stub.ListAccounts(request)
+            req = proto_pb2.ListAccountsRequest()
+            res = stub.ListAccounts(req)
+            response = ListAccountsResponse.from_grpc_model(res)
         case Opcode.SEND_MESSAGE:
-            request = proto_pb2.SendMessageRequest(
+            req = proto_pb2.SendMessageRequest(
                 message=kwargs.get('message', None),
                 recipient_username=kwargs.get('recipient_username', None),
                 sender_username=kwargs.get('sender_username', None))
-            response = stub.SendMessage(request)
+            res = stub.SendMessage(req)
+            response = SendMessageResponse.from_grpc_model(res)
         case Opcode.DELIVER_UNDELIVERED_MESSAGES:
-            request = proto_pb2.DeliverUndeliveredMessagesRequest(
+            req = proto_pb2.DeliverUndeliveredMessagesRequest(
                 username=kwargs.get('username', None))
-            response = stub.DeliverUndeliveredMessages(request)
+            res = stub.DeliverUndeliveredMessages(req)
+            response = DeliverUndeliveredMessagesResponse.from_grpc_model(res)
         case Opcode.DELETE_ACCOUNT:
-            request = proto_pb2.DeleteAccountRequest(
+            req = proto_pb2.DeleteAccountRequest(
                 username=kwargs.get('username', None))
-            response = stub.DeleteAccount(request)
+            res = stub.DeleteAccount(req)
+            response = DeleteAccountResponse.from_grpc_model(res)
 
-    return response.error
+    return response
 
 
 def handler(err: Exception,

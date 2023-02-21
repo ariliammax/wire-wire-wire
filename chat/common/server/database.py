@@ -54,7 +54,8 @@ class Database(object):
             if recipient_username not in cls._messages:
                 return []
             messages = cls._messages[recipient_username]
-            recipient_messages = [msg for msg in messages if not msg._delivered]
+            recipient_messages = [msg for msg in messages
+                                  if not msg._delivered]
         return recipient_messages
 
     @classmethod

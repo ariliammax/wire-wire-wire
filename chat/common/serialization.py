@@ -22,15 +22,16 @@ class SerializationUtils:
 
     @staticmethod
     def deserialize_bool(data: bytes) -> bool:
-        return bool.from_bytes(data, byteorder='little')
+        return bool.from_bytes(data[:1], byteorder='little')
 
     @staticmethod
     def serialize_bool(val: bool) -> bytes:
         return bool(val).to_bytes(1, byteorder='little')
 
     @staticmethod
-    def deserialize_int(data: bytes) -> int:
-        return int.from_bytes(data, byteorder='little')
+    def deserialize_int(data: bytes, length: int = INT_LEN_BITS) -> int:
+        return int.from_bytes(data[:min(length, len(data))],
+                              byteorder='little')
 
     @staticmethod
     def serialize_int(val: int, length: int = INT_LEN_BITS) -> bytes:
@@ -38,7 +39,8 @@ class SerializationUtils:
 
     @staticmethod
     def deserialize_str(data: bytes) -> str:
-        length = SerializationUtils.deserialize_int(data[:STR_LEN_BITS])
+        length = SerializationUtils.deserialize_int(data[:STR_LEN_BITS],
+                                                    length=STR_LEN_BITS)
         return data[STR_LEN_BITS:length + STR_LEN_BITS].decode('utf-8')
 
     @staticmethod
@@ -46,7 +48,7 @@ class SerializationUtils:
         encoded = str(val or '').encode('utf-8')
         return SerializationUtils.serialize_int(
             len(encoded),
-            STR_LEN_BITS) + encoded
+            length=STR_LEN_BITS) + encoded
 
     @staticmethod
     def deserialize_list(data: bytes,
@@ -54,7 +56,8 @@ class SerializationUtils:
                          item_serialize: Callable,
                          remain: Optional[int] = None) -> bytes:
         if remain is None:
-            length = SerializationUtils.deserialize_int(data[:LIST_LEN_BITS])
+            length = SerializationUtils.deserialize_int(data[:LIST_LEN_BITS],
+                                                        length=LIST_LEN_BITS)
             return SerializationUtils.deserialize_list(data[LIST_LEN_BITS:],
                                                        item_deserialize,
                                                        item_serialize,
@@ -78,7 +81,7 @@ class SerializationUtils:
             val = []
         if remain is None:
             return (SerializationUtils.serialize_int(len(val),
-                                                     LIST_LEN_BITS) +
+                                                     length=LIST_LEN_BITS) +
                     SerializationUtils.serialize_list(val,
                                                       item_serialize,
                                                       remain=len(val)))

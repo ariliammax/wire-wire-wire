@@ -14,6 +14,8 @@ from chat.common.models import (
 from chat.common.operations import Opcode
 from chat.common.server.database import Database
 
+import time
+
 
 # These are all kwargs accepting, so we can attach to `Opcode`s in the wire
 # protocol so it's a clean lil pipe from the deserialization, or we can call
@@ -58,16 +60,17 @@ class Events:
                      sender_username: str,
                      **kwargs):
         recipient_account = (Account()
-                            .set_username(recipient_username))
+                             .set_username(recipient_username))
         if not Database.has_account(recipient_account):
-            return SendMessageResponse(error='Recipient account does not exist.')
+            return SendMessageResponse(
+                error='Recipient account does not exist.')
         else:
             message = (Message()
-                    .set_delivered(False)
-                    .set_message(message)
-                    .set_recipient_username(recipient_username)
-                    .set_sender_username(sender_username)
-                    .set_time(0))
+                       .set_delivered(False)
+                       .set_message(message)
+                       .set_recipient_username(recipient_username)
+                       .set_sender_username(sender_username)
+                       .set_time(int(time.time())))
             Database.upsert_message(message)
             return SendMessageResponse(error='')
 
@@ -78,7 +81,8 @@ class Events:
         messages = Database.get_messages(account)
         if not messages:
             return DeliverUndeliveredMessagesResponse(
-                error='No new messages!')
+                error='No new messages!',
+                messages=[])
         else:
             [message.set_delivered(True) for message in messages]
             return DeliverUndeliveredMessagesResponse(error='',

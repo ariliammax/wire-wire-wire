@@ -42,6 +42,7 @@ class BaseRequest(Model.model_with_fields(opcode=int)):
                                field_deserializers: Dict[str, Callable] = {},
                                field_serializers: Dict[str, Callable] = {},
                                order_of_fields: List[str] = None,
+                               fields_list_nested: Dict[str, type] = {},
                                **new_fields: Dict[str, type]):
         class __impl_class__(
             BaseRequest.add_fields(
@@ -56,6 +57,7 @@ class BaseRequest(Model.model_with_fields(opcode=int)):
                 order_of_fields=(order_of_fields or
                                  (['opcode'] +
                                   list(new_fields.keys()))),
+                fields_list_nested=fields_list_nested,
                 **new_fields)):
             pass
 
@@ -70,6 +72,7 @@ class BaseResponse(BaseRequest.add_fields(error=str)):
                                field_deserializers: Dict[str, Callable] = {},
                                field_serializers: Dict[str, Callable] = {},
                                order_of_fields: List[str] = None,
+                               fields_list_nested: Dict[str, type] = {},
                                **new_fields: Dict[str, type]):
         class __impl_class__(
             BaseResponse.add_fields(
@@ -84,6 +87,7 @@ class BaseResponse(BaseRequest.add_fields(error=str)):
                 order_of_fields=(order_of_fields or
                                  (['opcode'] +
                                   list(new_fields.keys()))),
+                fields_list_nested=fields_list_nested,
                 **new_fields)):
             pass
 
@@ -112,10 +116,8 @@ ListAccountsRequest = BaseRequest.add_fields_with_opcode(
 ListAccountsResponse = BaseResponse.add_fields_with_opcode(
     accounts=list,
     opcode=Opcode.LIST_ACCOUNTS,
-    field_deserializers=dict(
-        accounts=Model.default_list_deserializer(Account)),
-    field_serializers=dict(
-        accounts=Model.default_list_serializer(Account)))
+    fields_list_nested=dict(
+        accounts=Account))
 
 
 # Function 3: Send Message
@@ -135,10 +137,8 @@ DeliverUndeliveredMessagesRequest = BaseRequest.add_fields_with_opcode(
 DeliverUndeliveredMessagesResponse = BaseResponse.add_fields_with_opcode(
     messages=list,
     opcode=Opcode.DELIVER_UNDELIVERED_MESSAGES,
-    field_deserializers=dict(
-        messages=Model.default_list_deserializer(Message)),
-    field_serializers=dict(
-        messages=Model.default_list_serializer(Message)))
+    fields_list_nested=dict(
+        messages=Message))
 
 
 # Function 5: Delete Account

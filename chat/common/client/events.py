@@ -4,6 +4,8 @@
 from chat.common.operations import Opcode
 from typing import Callable
 
+import datetime
+
 
 def main(entry: Callable, request: Callable, handler: Callable, **kwargs):
     """A nice (TM) generic way of handling the event logic shared by the wire
@@ -23,8 +25,8 @@ def main(entry: Callable, request: Callable, handler: Callable, **kwargs):
 
         while not has_logged_in:
             print('Do you want to...\n'
-                    '1) Login\n'
-                    '2) Signup\n')
+                  '1) Login\n'
+                  '2) Signup\n')
             opcode = input('> 1/2: ')
 
             if opcode not in ['1', '2']:
@@ -36,23 +38,23 @@ def main(entry: Callable, request: Callable, handler: Callable, **kwargs):
                 case Opcode.LOGIN_ACCOUNT:
                     username = input('> Username: ')
                     response = request(opcode=Opcode.LOGIN_ACCOUNT,
-                        username=username,
-                        **kwargs)
+                                       username=username,
+                                       **kwargs)
                     if response.get_error() == '':
                         print('\nLogin succesful!\n')
                         has_logged_in = True
                     else:
-                        print('\n' + response.get_error() + '\n')
+                        print(f'\n{response.get_error()!s}\n')
                 case Opcode.CREATE_ACCOUNT:
                     username = input('> Username: ')
                     response = request(opcode=Opcode.CREATE_ACCOUNT,
-                        username=username,
-                        **kwargs)
+                                       username=username,
+                                       **kwargs)
                     if response.get_error() == '':
                         print('\nAccount creation succesful!\n')
                         has_logged_in = True
                     else:
-                        print('\n' + response.get_error() + '\n')
+                        print(f'\n{response.get_error()!s}\n')
 
         while True:
             print('Do you want to...\n'
@@ -72,12 +74,14 @@ def main(entry: Callable, request: Callable, handler: Callable, **kwargs):
                     response = request(opcode=Opcode.LIST_ACCOUNTS,
                                        **kwargs)
                     accounts = response.get_accounts()
-                    formatted_accounts = [f"{account.get_username()} (active: {account.get_logged_in()})" for account in accounts]
-                    formatted_account_list = ", ".join(formatted_accounts)
+                    formatted_accounts = [f'{account.get_username()} (active: '
+                                          f'{account.get_logged_in()})'
+                                          for account in accounts]
+                    formatted_account_list = ', '.join(formatted_accounts)
                     if response.get_error() == '':
-                        print('\nAccounts:\n[' + formatted_account_list + ']\n')
+                        print(f'\nAccounts:\n{formatted_account_list!s}\n')
                     else:
-                        print('\n' + response.get_error() + '\n')
+                        print(f'\n{response.get_error()!s}\n')
                 case Opcode.SEND_MESSAGE:
                     recipient = input('> Recipient: ')
                     message = input('> Message: ')
@@ -90,13 +94,13 @@ def main(entry: Callable, request: Callable, handler: Callable, **kwargs):
                     if response.get_error() == '':
                         print('\nYour message was sent!\n')
                     else:
-                        print('\n' + response.get_error() + '\n')
+                        print(f'\n{response.get_error()!s}\n')
                 case Opcode.DELIVER_UNDELIVERED_MESSAGES:
                     response = request(opcode=Opcode
                                        .DELIVER_UNDELIVERED_MESSAGES,
                                        username=username,
                                        **kwargs)
-                    if response.get_error() == '':           
+                    if response.get_error() == '':
                         messages = response.get_messages()
                         formatted_messages = ""
 
@@ -105,22 +109,31 @@ def main(entry: Callable, request: Callable, handler: Callable, **kwargs):
                         for message in messages:
                             sender = message.get_sender_username()
                             if sender in grouped_messages:
-                                grouped_messages[sender].append(message.get_message())
+                                grouped_messages[sender].append(
+                                        (message.get_time(),
+                                         message.get_message()))
                             else:
-                                grouped_messages[sender] = [message.get_message()]
+                                grouped_messages[sender] = \
+                                    [(message.get_time(),
+                                      message.get_message())]
 
                         # Iterate over the grouped messages and format them
                         for sender, messages in grouped_messages.items():
-                            formatted_messages += f"> {sender}\n"
-                            for message in messages:
-                                formatted_messages += f"{message}\n"
+                            messages.sort(key=lambda t_msg: t_msg[0])
+                            formatted_messages += f'> {sender}\n'
+                            for t, message in messages:
+                                formatted_messages += (datetime
+                                                       .datetime
+                                                       .fromtimestamp(t)
+                                                       .isoformat(sep=' '))
+                                formatted_messages += f' {message}\n'
 
                         # Remove the trailing newline character
                         formatted_messages = formatted_messages[:-1]
 
-                        print('\n' + formatted_messages + '\n')
+                        print(f'\n{formatted_messages!s}\n')
                     else:
-                        print('\n' + response.get_error() + '\n')
+                        print(f'\n{response.get_error()!s}\n')
                 case Opcode.DELETE_ACCOUNT:
                     response = request(opcode=Opcode.DELETE_ACCOUNT,
                                        username=username,
@@ -129,7 +142,7 @@ def main(entry: Callable, request: Callable, handler: Callable, **kwargs):
                         print('\nYour account was deleted!\n')
                         break
                     else:
-                        print('\n' + response.get_error() + '\n')
+                        print(f'\n{response.get_error()!s}\n')
 
     except Exception as err:
         handler(err=err, **kwargs)
