@@ -27,14 +27,11 @@ class Events:
         account = (Account()
                    .set_username(username)
                    .set_logged_in(True))
-        if Database.has_account(account):
-            pass
-            # response = ' '
-            #  (f'ERROR: Account {username!s} already '
-            #   f'exists... logging in!')
-
-        Database.upsert_account(account)
-        return LogInAccountResponse(error='')
+        if not Database.has_account(account):
+            return CreateAccountResponse(error='This account does not exist.')
+        else:
+            Database.upsert_account(account)
+            return LogInAccountResponse(error='')
 
     @staticmethod
     def create_account(username: str, **kwargs):
@@ -44,13 +41,10 @@ class Events:
                    .set_username(username)
                    .set_logged_in(True))
         if Database.has_account(account):
-            pass
-            # response = ' '
-            #  (f'ERROR: Account {username!s} already '
-            #   f'exists... logging in!')
-
-        Database.upsert_account(account)
-        return CreateAccountResponse(error='')
+            return CreateAccountResponse(error='This account already exists.')
+        else:
+            Database.upsert_account(account)
+            return CreateAccountResponse(error='')
 
     @staticmethod
     def list_accounts(**kwargs):
@@ -82,10 +76,11 @@ class Events:
         messages = []
         account = Database._accounts[username]
         messages = Database.get_messages(account)
-        if (not messages):
+        if not messages:
             return DeliverUndeliveredMessagesResponse(
                 error='No new messages!')
         else:
+            [message.set_delivered(True) for message in messages]
             return DeliverUndeliveredMessagesResponse(error='',
                                                       messages=messages)
 

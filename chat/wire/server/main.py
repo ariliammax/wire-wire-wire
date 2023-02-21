@@ -58,10 +58,6 @@ def handle_connection(connection):
                     kwargs['username'] = req.get_username()
 
             response = EventsRouter[opcode](**kwargs)
-
-            print(response.get_error())
-            print(response._fields)
-            print(response.serialize())
             connection.sendall(response.serialize())
     except Exception as e:
         raise e
