@@ -63,26 +63,29 @@ class Events:
                      recipient_username: str,
                      sender_username: str,
                      **kwargs):
-        message = (Message()
-                   .set_delivered(False)
-                   .set_message(message)
-                   .set_recipient_username(recipient_username)
-                   .set_sender_username(sender_username)
-                   .set_time(0))
-        Database.upsert_message(message)
-        return SendMessageResponse(error='')
+        recipient_account = (Account()
+                            .set_username(recipient_username))
+        if not Database.has_account(recipient_account):
+            return SendMessageResponse(error='Recipient account does not exist.')
+        else:
+            message = (Message()
+                    .set_delivered(False)
+                    .set_message(message)
+                    .set_recipient_username(recipient_username)
+                    .set_sender_username(sender_username)
+                    .set_time(0))
+            Database.upsert_message(message)
+            return SendMessageResponse(error='')
 
     @staticmethod
     def deliver_undelivered_messages(username: str, **kwargs):
         messages = []
         account = Database._accounts[username]
-        messages_by_sender = Database.get_messages(account)
-        if (not messages_by_sender):
+        messages = Database.get_messages(account)
+        if (not messages):
             return DeliverUndeliveredMessagesResponse(
                 error='No new messages!')
         else:
-            messages = sum([msg for _, msg in messages_by_sender.items()],
-                           start=[])
             return DeliverUndeliveredMessagesResponse(error='',
                                                       messages=messages)
 

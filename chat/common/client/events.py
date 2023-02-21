@@ -42,7 +42,13 @@ def main(entry: Callable, request: Callable, handler: Callable, **kwargs):
                 case Opcode.LIST_ACCOUNTS:
                     response = request(opcode=Opcode.LIST_ACCOUNTS,
                                        **kwargs)
-                    print('\nAccounts:\n[' + str(response) + ']\n')
+                    accounts = response.get_accounts()
+                    formatted_accounts = [f"{account.get_username()} (active: {account.get_logged_in()})" for account in accounts]
+                    formatted_account_list = ", ".join(formatted_accounts)
+                    if (response.get_error() == ''):
+                        print('\nAccounts:\n[' + formatted_account_list + ']\n')
+                    else:
+                        print(response.get_error())
                 case Opcode.SEND_MESSAGE:
                     recipient = input('> Recipient: ')
                     message = input('> Message: ')
@@ -52,18 +58,43 @@ def main(entry: Callable, request: Callable, handler: Callable, **kwargs):
                         recipient_username=recipient,
                         sender_username=username,
                         **kwargs)
-                    print('\nYour message was sent!\n')
+                    if (response.get_error() == ''):
+                        print('\nYour message was sent!\n')
+                    else:
+                        print(response.get_error())
                 case Opcode.DELIVER_UNDELIVERED_MESSAGES:
                     response = request(opcode=Opcode
                                        .DELIVER_UNDELIVERED_MESSAGES,
                                        username=username,
                                        **kwargs)
-                    print('\n' + str(response) + '\n')
+                    messages = response.get_messages()
+                    formatted_messages = ""
+
+                    # Create a dictionary to group messages by sender
+                    grouped_messages = {}
+                    for message in messages:
+                        sender = message.get_sender_username()
+                        if sender in grouped_messages:
+                            grouped_messages[sender].append(message.get_message())
+                        else:
+                            grouped_messages[sender] = [message.get_message()]
+
+                    # Iterate over the grouped messages and format them
+                    for sender, messages in grouped_messages.items():
+                        formatted_messages += f"> {sender}\n"
+                        for message in messages:
+                            formatted_messages += f"{message}\n"
+
+                    print('\n' + formatted_messages + '\n')
                 case Opcode.DELETE_ACCOUNT:
                     response = request(opcode=Opcode.DELETE_ACCOUNT,
                                        username=username,
                                        **kwargs)
-                    break
+                    if (response.get_error() == ''):
+                        print('\nYour account was deleted!\n')
+                        break
+                    else:
+                        print(response.get_error())
 
     except Exception as err:
         handler(err=err, **kwargs)
