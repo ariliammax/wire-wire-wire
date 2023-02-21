@@ -26,7 +26,7 @@ def print_messages(messages=None, **kwargs):
     # Iterate over the grouped messages and format them
     for sender, messages in grouped_messages.items():
         messages.sort(key=lambda t_msg: t_msg[0])
-        formatted_messages += f'> {sender}\n'
+        formatted_messages += f'\n> {sender}\n'
         for t, message in messages:
             formatted_messages += (datetime.datetime.fromtimestamp(t)
                                    .isoformat(sep=' '))
@@ -35,7 +35,7 @@ def print_messages(messages=None, **kwargs):
     # Remove the trailing newline character
     formatted_messages = formatted_messages[:-1]
 
-    print(f'\n{formatted_messages!s}\n')
+    print(f'\n{formatted_messages!s}\n\n...', end="")
 
 
 def poll(request: Callable = None, username: str = None, **kwargs):
