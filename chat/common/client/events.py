@@ -62,7 +62,8 @@ def create_poll(request: Callable = None, username: str = None, **kwargs):
     p = threading.Timer(interval=Config.POLL_TIME,
                         function=poll,
                         kwargs=dict(request=request,
-                                    username=username))
+                                    username=username,
+                                    **kwargs))
     p.start()
 
 
@@ -116,7 +117,7 @@ def main(entry: Callable, request: Callable, handler: Callable, **kwargs):
                         print(f'\n{response.get_error()!s}\n')
 
         # start polling for new messages, every
-        create_poll(request=request, username=username)
+        create_poll(request=request, username=username, **kwargs)
 
         while True:
             print('Do you want to...\n'
