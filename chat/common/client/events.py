@@ -1,10 +1,69 @@
 # events.py
 # in chat.common.client
 
+from chat.common.config import Config
 from chat.common.operations import Opcode
 from typing import Callable
 
 import datetime
+import threading
+
+
+def print_messages(messages=None, **kwargs):
+    formatted_messages = ""
+
+    # Create a dictionary to group messages by sender
+    grouped_messages = {}
+    for message in messages:
+        sender = message.get_sender_username()
+        if sender in grouped_messages:
+            grouped_messages[sender].append((message.get_time(),
+                                             message.get_message()))
+        else:
+            grouped_messages[sender] = [(message.get_time(),
+                                         message.get_message())]
+
+    # Iterate over the grouped messages and format them
+    for sender, messages in grouped_messages.items():
+        messages.sort(key=lambda t_msg: t_msg[0])
+        formatted_messages += f'> {sender}\n'
+        for t, message in messages:
+            formatted_messages += (datetime.datetime.fromtimestamp(t)
+                                   .isoformat(sep=' '))
+            formatted_messages += f' {message}\n'
+
+    # Remove the trailing newline character
+    formatted_messages = formatted_messages[:-1]
+
+    print(f'\n{formatted_messages!s}\n')
+
+
+def poll(request: Callable = None, username: str = None, **kwargs):
+    response = request(opcode=Opcode
+                       .DELIVER_UNDELIVERED_MESSAGES,
+                       username=username,
+                       **kwargs)
+    if response.get_error() == '':
+        messages = response.get_messages()
+
+        # ack the messages
+        _ = request(opcode=Opcode
+                    .ACKNOWLEDGE_MESSAGES,
+                    messages=messages,
+                    **kwargs)
+
+        print_messages(messages=messages)
+
+    create_poll(request=request, username=username, **kwargs)
+
+
+def create_poll(request: Callable = None, username: str = None, **kwargs):
+    # start polling for new messages, every
+    p = threading.Timer(interval=Config.POLL_TIME,
+                        function=poll,
+                        kwargs=dict(request=request,
+                                    username=username))
+    p.start()
 
 
 def main(entry: Callable, request: Callable, handler: Callable, **kwargs):
@@ -56,6 +115,9 @@ def main(entry: Callable, request: Callable, handler: Callable, **kwargs):
                     else:
                         print(f'\n{response.get_error()!s}\n')
 
+        # start polling for new messages, every
+        create_poll(request=request, username=username)
+
         while True:
             print('Do you want to...\n'
                   '1) List Accounts\n'
@@ -67,7 +129,7 @@ def main(entry: Callable, request: Callable, handler: Callable, **kwargs):
             if opcode not in ['1', '2', '3', '4']:
                 continue
 
-            # + 1 since Opcode.CREATE_ACCOUNT has value 0.
+            # + 1 since Opcode.[option above] is one more than printed option
             opcode = Opcode(int(opcode) + 1)
             match opcode:
                 case Opcode.LIST_ACCOUNTS:
@@ -109,36 +171,7 @@ def main(entry: Callable, request: Callable, handler: Callable, **kwargs):
                                     messages=messages,
                                     **kwargs)
 
-                        formatted_messages = ""
-
-                        # Create a dictionary to group messages by sender
-                        grouped_messages = {}
-                        for message in messages:
-                            sender = message.get_sender_username()
-                            if sender in grouped_messages:
-                                grouped_messages[sender].append(
-                                        (message.get_time(),
-                                         message.get_message()))
-                            else:
-                                grouped_messages[sender] = \
-                                    [(message.get_time(),
-                                      message.get_message())]
-
-                        # Iterate over the grouped messages and format them
-                        for sender, messages in grouped_messages.items():
-                            messages.sort(key=lambda t_msg: t_msg[0])
-                            formatted_messages += f'> {sender}\n'
-                            for t, message in messages:
-                                formatted_messages += (datetime
-                                                       .datetime
-                                                       .fromtimestamp(t)
-                                                       .isoformat(sep=' '))
-                                formatted_messages += f' {message}\n'
-
-                        # Remove the trailing newline character
-                        formatted_messages = formatted_messages[:-1]
-
-                        print(f'\n{formatted_messages!s}\n')
+                        print_messages(messages=messages)
                     else:
                         print(f'\n{response.get_error()!s}\n')
                 case Opcode.DELETE_ACCOUNT:
