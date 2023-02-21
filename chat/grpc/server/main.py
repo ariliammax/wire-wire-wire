@@ -2,6 +2,7 @@
 # in chat.grpc.server
 
 from chat.common.config import Config
+from chat.common.models import Message
 from chat.common.server.events import Events
 from concurrent import futures
 
@@ -44,6 +45,13 @@ class ChatServicer(proto_pb2_grpc.ChatServicer):
                                         .get_recipient_username(),
                                         message=msg.get_message())
                       for msg in response.get_messages()])
+
+    def AcknowledgeMessages(self, request, context):
+        response = Events.acknowledge_messages(
+            messages=[Message.from_grpc_model(msg)
+                      for msg in request.messages])
+        return proto_pb2.AcknowledgeMessagesResponse(
+            error=response.get_error())
 
     def DeleteAccount(self, request, context):
         response = Events.delete_account(username=request.username)

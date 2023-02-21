@@ -46,6 +46,16 @@ class Model(object):
                         'fields_list_nested',
                         'reserved_fields']
 
+    def __eq__(self, other) -> bool:
+        return len([n for n in self._fields
+                    if getattr(self, f'get_{n!s}', lambda: None)() !=
+                    getattr(other, f'get_{n!s}', lambda: None)()]) == 0
+
+    def __str__(self) -> str:
+        return ','.join([f'{n!s}: '
+                         f'{getattr(self, f"get_{n!s}", lambda: None)()!s}'
+                         for n in self._fields])
+
     @staticmethod
     def default_deserializer(t: Type) -> Optional[Callable]:
         match t:

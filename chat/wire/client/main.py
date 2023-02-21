@@ -4,6 +4,8 @@
 from chat.common.client.events import main as client_main
 from chat.common.config import Config
 from chat.common.models import (
+    AcknowledgeMessagesRequest,
+    AcknowledgeMessagesResponse,
     CreateAccountRequest,
     CreateAccountResponse,
     DeleteAccountRequest,
@@ -37,27 +39,30 @@ def request(opcode: Opcode,
             message: Optional[str] = None,
             recipient_username: Optional[str] = None,
             sender_username: Optional[str] = None,
+            messages: Optional[list] = None,
             **kwargs):
-    object = None
+    obj = None
     match opcode:
         case Opcode.LOGIN_ACCOUNT:
-            object = LogInAccountRequest(username=username)
+            obj = LogInAccountRequest(username=username)
         case Opcode.CREATE_ACCOUNT:
-            object = CreateAccountRequest(username=username)
+            obj = CreateAccountRequest(username=username)
         case Opcode.LIST_ACCOUNTS:
-            object = ListAccountsRequest()
+            obj = ListAccountsRequest()
         case Opcode.SEND_MESSAGE:
-            object = SendMessageRequest(
+            obj = SendMessageRequest(
                 message=message,
                 recipient_username=recipient_username,
                 sender_username=sender_username,
             )
         case Opcode.DELIVER_UNDELIVERED_MESSAGES:
-            object = DeliverUndeliveredMessagesRequest(username=username)
+            obj = DeliverUndeliveredMessagesRequest(username=username)
         case Opcode.DELETE_ACCOUNT:
-            object = DeleteAccountRequest(username=username)
+            obj = DeleteAccountRequest(username=username)
+        case Opcode.ACKNOWLEDGE_MESSAGES:
+            obj = AcknowledgeMessagesRequest(messages=messages)
 
-    request = object.serialize()
+    request = obj.serialize()
     s.sendall(request)
     response = s.recv(1024)
 
@@ -74,6 +79,8 @@ def request(opcode: Opcode,
             return DeliverUndeliveredMessagesResponse.deserialize(response)
         case Opcode.DELETE_ACCOUNT:
             return DeleteAccountResponse.deserialize(response)
+        case Opcode.ACKNOWLEDGE_MESSAGES:
+            return AcknowledgeMessagesResponse.deserialize(response)
 
 
 def handler(err: Exception, s: Optional[socket.socket] = None, **kwargs):

@@ -3,6 +3,7 @@
 
 from chat.common.models import (
     Account,
+    AcknowledgeMessagesResponse,
     CreateAccountResponse,
     DeleteAccountResponse,
     DeliverUndeliveredMessagesResponse,
@@ -77,14 +78,13 @@ class Events:
     @staticmethod
     def deliver_undelivered_messages(username: str, **kwargs):
         messages = []
-        account = Database._accounts[username]
+        account = Database.get_accounts()[username]
         messages = Database.get_messages(account)
         if not messages:
             return DeliverUndeliveredMessagesResponse(
                 error='No new messages!',
                 messages=[])
         else:
-            [message.set_delivered(True) for message in messages]
             return DeliverUndeliveredMessagesResponse(error='',
                                                       messages=messages)
 
@@ -102,6 +102,13 @@ class Events:
                        .set_logged_in(False))
             Database.upsert_account(account)
 
+    @staticmethod
+    def acknowledge_messages(messages: list, **kwargs):
+        for message in messages:
+            message.set_delivered(True)
+            Database.upsert_message(message)
+        return AcknowledgeMessagesResponse(error='')
+
 
 EventsRouter = {Opcode.LOGIN_ACCOUNT:
                 Events.login_account,
@@ -114,4 +121,6 @@ EventsRouter = {Opcode.LOGIN_ACCOUNT:
                 Opcode.DELIVER_UNDELIVERED_MESSAGES:
                 Events.deliver_undelivered_messages,
                 Opcode.DELETE_ACCOUNT:
-                Events.delete_account}
+                Events.delete_account,
+                Opcode.ACKNOWLEDGE_MESSAGES:
+                Events.acknowledge_messages}

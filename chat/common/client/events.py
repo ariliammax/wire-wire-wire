@@ -102,6 +102,13 @@ def main(entry: Callable, request: Callable, handler: Callable, **kwargs):
                                        **kwargs)
                     if response.get_error() == '':
                         messages = response.get_messages()
+
+                        # ack the messages
+                        _ = request(opcode=Opcode
+                                    .ACKNOWLEDGE_MESSAGES,
+                                    messages=messages,
+                                    **kwargs)
+
                         formatted_messages = ""
 
                         # Create a dictionary to group messages by sender

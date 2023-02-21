@@ -141,6 +141,16 @@ DeliverUndeliveredMessagesResponse = BaseResponse.add_fields_with_opcode(
         messages=Message))
 
 
+# Function 4.1: Acknowledge Messages
+AcknowledgeMessagesRequest = BaseRequest.add_fields_with_opcode(
+    messages=list,
+    opcode=Opcode.ACKNOWLEDGE_MESSAGES,
+    fields_list_nested=dict(
+        messages=Message))
+AcknowledgeMessagesResponse = BaseResponse.add_fields_with_opcode(
+    opcode=Opcode.ACKNOWLEDGE_MESSAGES)
+
+
 # Function 5: Delete Account
 DeleteAccountRequest = BaseRequest.add_fields_with_opcode(
     username=str,

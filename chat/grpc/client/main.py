@@ -4,6 +4,7 @@
 from chat.common.client.events import main as client_main
 from chat.common.config import Config
 from chat.common.models import (
+    AcknowledgeMessagesResponse,
     CreateAccountResponse,
     DeleteAccountResponse,
     DeliverUndeliveredMessagesResponse,
@@ -25,18 +26,23 @@ def entry(**kwargs):
     return kwargs
 
 
-def request(opcode: Opcode, channel: grpc.Channel = None, **kwargs):
+def request(opcode: Opcode,
+            channel: grpc.Channel = None,
+            username: Optional[str] = None,
+            message: Optional[str] = None,
+            recipient_username: Optional[str] = None,
+            sender_username: Optional[str] = None,
+            messages: Optional[list] = None,
+            **kwargs):
     stub = proto_pb2_grpc.ChatStub(channel)
 
     match opcode:
         case Opcode.LOGIN_ACCOUNT:
-            req = proto_pb2.LogInAccountRequest(
-                username=kwargs.get('username', None))
+            req = proto_pb2.LogInAccountRequest(username=username)
             res = stub.LogInAccount(req)
             response = LogInAccountResponse.from_grpc_model(res)
         case Opcode.CREATE_ACCOUNT:
-            req = proto_pb2.CreateAccountRequest(
-                username=kwargs.get('username', None))
+            req = proto_pb2.CreateAccountRequest(username=username)
             res = stub.CreateAccount(req)
             response = CreateAccountResponse.from_grpc_model(res)
         case Opcode.LIST_ACCOUNTS:
@@ -45,21 +51,26 @@ def request(opcode: Opcode, channel: grpc.Channel = None, **kwargs):
             response = ListAccountsResponse.from_grpc_model(res)
         case Opcode.SEND_MESSAGE:
             req = proto_pb2.SendMessageRequest(
-                message=kwargs.get('message', None),
-                recipient_username=kwargs.get('recipient_username', None),
-                sender_username=kwargs.get('sender_username', None))
+                message=message,
+                recipient_username=recipient_username,
+                sender_username=sender_username)
             res = stub.SendMessage(req)
             response = SendMessageResponse.from_grpc_model(res)
         case Opcode.DELIVER_UNDELIVERED_MESSAGES:
             req = proto_pb2.DeliverUndeliveredMessagesRequest(
-                username=kwargs.get('username', None))
+                username=username)
             res = stub.DeliverUndeliveredMessages(req)
             response = DeliverUndeliveredMessagesResponse.from_grpc_model(res)
         case Opcode.DELETE_ACCOUNT:
             req = proto_pb2.DeleteAccountRequest(
-                username=kwargs.get('username', None))
+                username=username)
             res = stub.DeleteAccount(req)
             response = DeleteAccountResponse.from_grpc_model(res)
+        case Opcode.ACKNOWLEDGE_MESSAGES:
+            req = proto_pb2.AcknowledgeMessagesRequest(
+                messages=messages)
+            res = stub.AcknowledgeMessages(req)
+            response = AcknowledgeMessagesResponse.from_grpc_model(res)
 
     return response
 

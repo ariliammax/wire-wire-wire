@@ -4,6 +4,7 @@
 from chat.common.config import Config
 from chat.common.models import (
     BaseRequest,
+    AcknowledgeMessagesRequest,
     CreateAccountRequest,
     DeleteAccountRequest,
     DeliverUndeliveredMessagesRequest,
@@ -56,6 +57,10 @@ def handle_connection(connection):
                 case Opcode.DELETE_ACCOUNT:
                     req = DeleteAccountRequest.deserialize(request)
                     kwargs['username'] = req.get_username()
+                case Opcode.ACKNOWLEDGE_MESSAGES:
+                    req = AcknowledgeMessagesRequest.deserialize(
+                        request)
+                    kwargs['messages'] = req.get_messages()
 
             response = EventsRouter[opcode](**kwargs)
             connection.sendall(response.serialize())

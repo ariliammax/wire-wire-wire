@@ -71,6 +71,14 @@ message DeliverUndeliveredMessagesResponse {
   repeated Message messages = 2;
 }
 
+message AcknowledgeMessagesRequest {
+  repeated Message messages = 1;
+}
+
+message AcknowledgeMessagesResponse{
+  string error = 1;
+}
+
 message DeleteAccountRequest {
   string username = 1;
 }
