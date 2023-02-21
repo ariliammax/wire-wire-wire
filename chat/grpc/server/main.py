@@ -43,7 +43,8 @@ class ChatServicer(proto_pb2_grpc.ChatServicer):
                                         .get_sender_username(),
                                         recipient_username=msg
                                         .get_recipient_username(),
-                                        message=msg.get_message())
+                                        message=msg.get_message(),
+                                        time=msg.get_time())
                       for msg in response.get_messages()])
 
     def AcknowledgeMessages(self, request, context):

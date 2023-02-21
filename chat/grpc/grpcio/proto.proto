@@ -9,6 +9,7 @@ service Chat {
   rpc SendMessage (SendMessageRequest) returns (SendMessageResponse) {}
   rpc DeliverUndeliveredMessages (DeliverUndeliveredMessagesRequest) returns (DeliverUndeliveredMessagesResponse) {}
   rpc DeleteAccount (DeleteAccountRequest) returns (DeleteAccountResponse) {}
+  rpc AcknowledgeMessages (AcknowledgeMessagesRequest) returns (AcknowledgeMessagesResponse) {}
 }
 
 // DATA MODELS

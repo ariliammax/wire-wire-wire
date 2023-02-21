@@ -68,7 +68,18 @@ def request(opcode: Opcode,
             response = DeleteAccountResponse.from_grpc_model(res)
         case Opcode.ACKNOWLEDGE_MESSAGES:
             req = proto_pb2.AcknowledgeMessagesRequest(
-                messages=messages)
+                messages=[proto_pb2.Message(
+                              message=message
+                              .get_message(),
+                              recipient_username=message
+                              .get_recipient_username(),
+                              sender_username=message
+                              .get_sender_username(),
+                              time=message
+                              .get_time(),
+                              delivered=message
+                              .get_delivered())
+                          for message in messages])
             res = stub.AcknowledgeMessages(req)
             response = AcknowledgeMessagesResponse.from_grpc_model(res)
 
