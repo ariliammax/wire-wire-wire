@@ -44,9 +44,6 @@ Then put that into `chat/common/config.py` under
 ```python
 class Config:
     HOST = 'xxx.xx.x.x'  # <- put the target IP of the server here.
-    MAX_WORKERS = 10
-    PORT = 8080
-    TIMEOUT = 1
 ```
 
 Sometimes, the port also gets blocked up. Change the target port of the server

@@ -75,6 +75,6 @@ class Database(object):
     def delete_account(cls, account: Account):
         username = account.get_username()
         with cls.accounts_lock:
-            cls._accounts.pop(username)
+            cls._accounts.pop(username, None)
         with cls.messages_lock:
-            cls._messages.pop(username)
+            cls._messages.pop(username, None)

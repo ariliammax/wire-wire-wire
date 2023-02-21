@@ -205,7 +205,7 @@ We replace the `Response` vs `Request` tedium with "gets" and "gives".
 
 1a. `CreateAccount`: gives `Account.username`, gets maybe error `str`.
 
-1b. `LoginAccount`: gives `Account.username`, gets maybe error `str`.
+1b. `LogInAccount`: gives `Account.username`, gets maybe error `str`.
 
 Max has the point these are the same, but we decided it was most readable to
 disentangle them.

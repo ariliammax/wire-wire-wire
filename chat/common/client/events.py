@@ -9,6 +9,9 @@ import datetime
 import threading
 
 
+timer = None
+
+
 def print_messages(messages=None, **kwargs):
     formatted_messages = ""
 
@@ -59,12 +62,13 @@ def poll(request: Callable = None, username: str = None, **kwargs):
 
 def create_poll(request: Callable = None, username: str = None, **kwargs):
     # start polling for new messages, every
-    p = threading.Timer(interval=Config.POLL_TIME,
-                        function=poll,
-                        kwargs=dict(request=request,
-                                    username=username,
-                                    **kwargs))
-    p.start()
+    global timer
+    timer = threading.Timer(interval=Config.POLL_TIME,
+                            function=poll,
+                            kwargs=dict(request=request,
+                                        username=username,
+                                        **kwargs))
+    timer.start()
 
 
 def main(entry: Callable, request: Callable, handler: Callable, **kwargs):
@@ -85,19 +89,20 @@ def main(entry: Callable, request: Callable, handler: Callable, **kwargs):
 
         while not has_logged_in:
             print('Do you want to...\n'
-                  '1) Login\n'
-                  '2) Signup\n')
+                  '1) Log In\n'
+                  '2) Sign Up\n')
             opcode = input('> 1/2: ')
 
-            if opcode not in ['1', '2']:
+            if opcode not in [str(i + 1) for i in range(2)]:
+                print()
                 continue
 
             # - 1 since Opcode.CREATE_ACCOUNT has value 0.
             opcode = Opcode(int(opcode) - 1)
             match opcode:
-                case Opcode.LOGIN_ACCOUNT:
+                case Opcode.LOG_IN_ACCOUNT:
                     username = input('> Username: ')
-                    response = request(opcode=Opcode.LOGIN_ACCOUNT,
+                    response = request(opcode=Opcode.LOG_IN_ACCOUNT,
                                        username=username,
                                        **kwargs)
                     if response.get_error() == '':
@@ -124,10 +129,12 @@ def main(entry: Callable, request: Callable, handler: Callable, **kwargs):
                   '1) List Accounts\n'
                   '2) Send a Message\n'
                   '3) Deliver Undelivered Messages\n'
-                  '4) Delete Account\n')
-            opcode = input('> 1/2/3/4: ')
+                  '4) Delete Account\n'
+                  '5) Log Out\n')
+            opcode = input('> 1/2/3/4/5: ')
 
-            if opcode not in ['1', '2', '3', '4']:
+            if opcode not in [str(i + 1) for i in range(5)]:
+                print()
                 continue
 
             # + 1 since Opcode.[option above] is one more than printed option
@@ -175,6 +182,15 @@ def main(entry: Callable, request: Callable, handler: Callable, **kwargs):
                         print_messages(messages=messages)
                     else:
                         print(f'\n{response.get_error()!s}\n')
+                case Opcode.LOG_OUT_ACCOUNT:
+                    response = request(opcode=Opcode.LOG_OUT_ACCOUNT,
+                                       username=username,
+                                       **kwargs)
+                    if response.get_error() == '':
+                        print('\n""""""""""""""""""""\nGOODBYE FROM CHATMAN\n""""""""""""""""""""\n')
+                        break
+                    else:
+                        print(f'\n{response.get_error()!s}\n')
                 case Opcode.DELETE_ACCOUNT:
                     response = request(opcode=Opcode.DELETE_ACCOUNT,
                                        username=username,
@@ -187,3 +203,6 @@ def main(entry: Callable, request: Callable, handler: Callable, **kwargs):
 
     except Exception as err:
         handler(err=err, **kwargs)
+
+    if timer is not None:
+        timer.cancel()

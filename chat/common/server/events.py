@@ -9,6 +9,7 @@ from chat.common.models import (
     DeliverUndeliveredMessagesResponse,
     ListAccountsResponse,
     LogInAccountResponse,
+    LogOutAccountResponse,
     Message,
     SendMessageResponse,
 )
@@ -24,17 +25,16 @@ import time
 class Events:
 
     @staticmethod
-    def login_account(username: str, **kwargs):
+    def log_in_account(username: str, **kwargs):
         # set state (just `username`)
         username = username
         account = (Account()
                    .set_username(username)
                    .set_logged_in(True))
         if not Database.has_account(account):
-            return CreateAccountResponse(error='This account does not exist.')
-        else:
-            Database.upsert_account(account)
-            return LogInAccountResponse(error='')
+            return LogInAccountResponse(error='This account does not exist.')
+        Database.upsert_account(account)
+        return LogInAccountResponse(error='')
 
     @staticmethod
     def create_account(username: str, **kwargs):
@@ -45,9 +45,8 @@ class Events:
                    .set_logged_in(True))
         if Database.has_account(account):
             return CreateAccountResponse(error='This account already exists.')
-        else:
-            Database.upsert_account(account)
-            return CreateAccountResponse(error='')
+        Database.upsert_account(account)
+        return CreateAccountResponse(error='')
 
     @staticmethod
     def list_accounts(**kwargs):
@@ -65,15 +64,14 @@ class Events:
         if not Database.has_account(recipient_account):
             return SendMessageResponse(
                 error='Recipient account does not exist.')
-        else:
-            message = (Message()
-                       .set_delivered(False)
-                       .set_message(message)
-                       .set_recipient_username(recipient_username)
-                       .set_sender_username(sender_username)
-                       .set_time(int(time.time())))
-            Database.upsert_message(message)
-            return SendMessageResponse(error='')
+        message = (Message()
+                   .set_delivered(False)
+                   .set_message(message)
+                   .set_recipient_username(recipient_username)
+                   .set_sender_username(sender_username)
+                   .set_time(int(time.time())))
+        Database.upsert_message(message)
+        return SendMessageResponse(error='')
 
     @staticmethod
     def deliver_undelivered_messages(username: str, **kwargs):
@@ -84,9 +82,8 @@ class Events:
             return DeliverUndeliveredMessagesResponse(
                 error='No new messages!',
                 messages=[])
-        else:
-            return DeliverUndeliveredMessagesResponse(error='',
-                                                      messages=messages)
+        return DeliverUndeliveredMessagesResponse(error='',
+                                                  messages=messages)
 
     @staticmethod
     def delete_account(username: str, **kwargs):
@@ -95,12 +92,14 @@ class Events:
         return DeleteAccountResponse(error='')
 
     @staticmethod
-    def account_logout(username: str, **kwargs):
-        if username in Database._accounts:
-            account = (Account()
-                       .set_username(username)
-                       .set_logged_in(False))
-            Database.upsert_account(account)
+    def log_out_account(username: str, **kwargs):
+        if username not in Database._accounts:
+            return LogOutAccountResponse(error='This account does not exist.')
+        account = (Account()
+                   .set_username(username)
+                   .set_logged_in(False))
+        Database.upsert_account(account)
+        return LogOutAccountResponse(error='')
 
     @staticmethod
     def acknowledge_messages(messages: list, **kwargs):
@@ -110,8 +109,8 @@ class Events:
         return AcknowledgeMessagesResponse(error='')
 
 
-EventsRouter = {Opcode.LOGIN_ACCOUNT:
-                Events.login_account,
+EventsRouter = {Opcode.LOG_IN_ACCOUNT:
+                Events.log_in_account,
                 Opcode.CREATE_ACCOUNT:
                 Events.create_account,
                 Opcode.LIST_ACCOUNTS:
@@ -122,5 +121,7 @@ EventsRouter = {Opcode.LOGIN_ACCOUNT:
                 Events.deliver_undelivered_messages,
                 Opcode.DELETE_ACCOUNT:
                 Events.delete_account,
+                Opcode.LOG_OUT_ACCOUNT:
+                Events.log_out_account,
                 Opcode.ACKNOWLEDGE_MESSAGES:
                 Events.acknowledge_messages}

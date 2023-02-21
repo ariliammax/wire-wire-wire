@@ -8,6 +8,8 @@ from chat.common.models import (
     CreateAccountRequest,
     DeleteAccountRequest,
     DeliverUndeliveredMessagesRequest,
+    LogInAccountRequest,
+    LogOutAccountRequest,
     SendMessageRequest,
 )
 from chat.common.operations import Opcode
@@ -40,8 +42,11 @@ def handle_connection(connection):
             opcode = BaseRequest.peek_opcode(request)
 
             match opcode:
-                case Opcode.LOGIN_ACCOUNT | Opcode.CREATE_ACCOUNT:
+                case Opcode.LOG_IN_ACCOUNT:
                     req = CreateAccountRequest.deserialize(request)
+                    kwargs['username'] = req.get_username()
+                case Opcode.CREATE_ACCOUNT:
+                    req = LogInAccountRequest.deserialize(request)
                     kwargs['username'] = req.get_username()
                 case Opcode.LIST_ACCOUNTS:
                     pass
@@ -57,6 +62,9 @@ def handle_connection(connection):
                 case Opcode.DELETE_ACCOUNT:
                     req = DeleteAccountRequest.deserialize(request)
                     kwargs['username'] = req.get_username()
+                case Opcode.LOG_OUT_ACCOUNT:
+                    req = LogOutAccountRequest.deserialize(request)
+                    kwargs['username'] = req.get_username()
                 case Opcode.ACKNOWLEDGE_MESSAGES:
                     req = AcknowledgeMessagesRequest.deserialize(
                         request)
@@ -69,7 +77,7 @@ def handle_connection(connection):
 
     if username is not None:
         # update the logged in status... don't check for multiple devices
-        Events.account_logout(username=username)
+        Events.log_out_account(username=username)
 
 
 def handler(err: Exception, s: Optional[socket.socket] = None, **kwargs):

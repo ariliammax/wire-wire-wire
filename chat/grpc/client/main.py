@@ -10,6 +10,7 @@ from chat.common.models import (
     DeliverUndeliveredMessagesResponse,
     ListAccountsResponse,
     LogInAccountResponse,
+    LogOutAccountResponse,
     SendMessageResponse,
 )
 from chat.common.operations import Opcode
@@ -37,7 +38,7 @@ def request(opcode: Opcode,
     stub = proto_pb2_grpc.ChatStub(channel)
 
     match opcode:
-        case Opcode.LOGIN_ACCOUNT:
+        case Opcode.LOG_IN_ACCOUNT:
             req = proto_pb2.LogInAccountRequest(username=username)
             res = stub.LogInAccount(req)
             response = LogInAccountResponse.from_grpc_model(res)
@@ -66,6 +67,11 @@ def request(opcode: Opcode,
                 username=username)
             res = stub.DeleteAccount(req)
             response = DeleteAccountResponse.from_grpc_model(res)
+        case Opcode.LOG_OUT_ACCOUNT:
+            req = proto_pb2.LogOutAccountRequest(
+                username=username)
+            res = stub.LogOutAccount(req)
+            response = LogOutAccountResponse.from_grpc_model(res)
         case Opcode.ACKNOWLEDGE_MESSAGES:
             req = proto_pb2.AcknowledgeMessagesRequest(
                 messages=[proto_pb2.Message(

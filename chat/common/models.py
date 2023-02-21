@@ -97,9 +97,9 @@ class BaseResponse(BaseRequest.add_fields(error=str)):
 # Function 0: Log In Account
 LogInAccountRequest = BaseRequest.add_fields_with_opcode(
     username=str,
-    opcode=Opcode.LOGIN_ACCOUNT)
+    opcode=Opcode.LOG_IN_ACCOUNT)
 LogInAccountResponse = BaseResponse.add_fields_with_opcode(
-    opcode=Opcode.LOGIN_ACCOUNT)
+    opcode=Opcode.LOG_IN_ACCOUNT)
 
 # Function 1: Create Account
 CreateAccountRequest = BaseRequest.add_fields_with_opcode(
@@ -157,3 +157,11 @@ DeleteAccountRequest = BaseRequest.add_fields_with_opcode(
     opcode=Opcode.DELETE_ACCOUNT)
 DeleteAccountResponse = BaseResponse.add_fields_with_opcode(
     opcode=Opcode.DELETE_ACCOUNT)
+
+
+# Function 6: Log Out Account
+LogOutAccountRequest = BaseRequest.add_fields_with_opcode(
+    username=str,
+    opcode=Opcode.LOG_OUT_ACCOUNT)
+LogOutAccountResponse = BaseResponse.add_fields_with_opcode(
+    opcode=Opcode.LOG_OUT_ACCOUNT)

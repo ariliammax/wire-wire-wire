@@ -16,6 +16,8 @@ from chat.common.models import (
     ListAccountsResponse,
     LogInAccountRequest,
     LogInAccountResponse,
+    LogOutAccountRequest,
+    LogOutAccountResponse,
     SendMessageRequest,
     SendMessageResponse,
 )
@@ -43,7 +45,7 @@ def request(opcode: Opcode,
             **kwargs):
     obj = None
     match opcode:
-        case Opcode.LOGIN_ACCOUNT:
+        case Opcode.LOG_IN_ACCOUNT:
             obj = LogInAccountRequest(username=username)
         case Opcode.CREATE_ACCOUNT:
             obj = CreateAccountRequest(username=username)
@@ -59,6 +61,8 @@ def request(opcode: Opcode,
             obj = DeliverUndeliveredMessagesRequest(username=username)
         case Opcode.DELETE_ACCOUNT:
             obj = DeleteAccountRequest(username=username)
+        case Opcode.LOG_OUT_ACCOUNT:
+            obj = LogOutAccountRequest(username=username)
         case Opcode.ACKNOWLEDGE_MESSAGES:
             obj = AcknowledgeMessagesRequest(messages=messages)
 
@@ -67,7 +71,7 @@ def request(opcode: Opcode,
     response = s.recv(1024)
 
     match opcode:
-        case Opcode.LOGIN_ACCOUNT:
+        case Opcode.LOG_IN_ACCOUNT:
             return LogInAccountResponse.deserialize(response)
         case Opcode.CREATE_ACCOUNT:
             return CreateAccountResponse.deserialize(response)
@@ -79,6 +83,8 @@ def request(opcode: Opcode,
             return DeliverUndeliveredMessagesResponse.deserialize(response)
         case Opcode.DELETE_ACCOUNT:
             return DeleteAccountResponse.deserialize(response)
+        case Opcode.LOG_OUT_ACCOUNT:
+            return LogOutAccountResponse.deserialize(response)
         case Opcode.ACKNOWLEDGE_MESSAGES:
             return AcknowledgeMessagesResponse.deserialize(response)
 

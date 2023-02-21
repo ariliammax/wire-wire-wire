@@ -13,7 +13,7 @@ import chat.grpc.grpcio.proto_pb2_grpc as proto_pb2_grpc
 
 class ChatServicer(proto_pb2_grpc.ChatServicer):
     def LogInAccount(self, request, context):
-        response = Events.login_account(username=request.username)
+        response = Events.log_in_account(username=request.username)
         return proto_pb2.LogInAccountResponse(error=response.get_error())
 
     def CreateAccount(self, request, context):
@@ -24,7 +24,8 @@ class ChatServicer(proto_pb2_grpc.ChatServicer):
         response = Events.list_accounts()
         return proto_pb2.ListAccountsResponse(
             error=response.get_error(),
-            accounts=[proto_pb2.Account(username=acc.get_username())
+            accounts=[proto_pb2.Account(logged_in=acc.get_logged_in(),
+                                        username=acc.get_username())
                       for acc in response.get_accounts()])
 
     def SendMessage(self, request, context):
@@ -53,6 +54,10 @@ class ChatServicer(proto_pb2_grpc.ChatServicer):
                       for msg in request.messages])
         return proto_pb2.AcknowledgeMessagesResponse(
             error=response.get_error())
+
+    def LogOutAccount(self, request, context):
+        response = Events.log_out_account(username=request.username)
+        return proto_pb2.LogOutAccountResponse(error=response.get_error())
 
     def DeleteAccount(self, request, context):
         response = Events.delete_account(username=request.username)

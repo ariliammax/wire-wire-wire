@@ -9,6 +9,7 @@ service Chat {
   rpc SendMessage (SendMessageRequest) returns (SendMessageResponse) {}
   rpc DeliverUndeliveredMessages (DeliverUndeliveredMessagesRequest) returns (DeliverUndeliveredMessagesResponse) {}
   rpc DeleteAccount (DeleteAccountRequest) returns (DeleteAccountResponse) {}
+  rpc LogOutAccount (LogOutAccountRequest) returns (LogOutAccountResponse) {}
   rpc AcknowledgeMessages (AcknowledgeMessagesRequest) returns (AcknowledgeMessagesResponse) {}
 }
 
@@ -77,6 +78,14 @@ message AcknowledgeMessagesRequest {
 }
 
 message AcknowledgeMessagesResponse{
+  string error = 1;
+}
+
+message LogOutAccountRequest {
+  string username = 1;
+}
+
+message LogOutAccountResponse {
   string error = 1;
 }
 
