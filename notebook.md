@@ -287,3 +287,9 @@ Every operation has its own:
 In both parts, we invert control to common code that is shared between them.
 
 _"Arf, she said."_ - Frank Zappa ~ _MS_
+
+### 2023.02.21
+
+The semantics of deleting an account containing undeliverered messages is that those messages are deleted.
+
+_"Arf, she said."_ - Frank Zappa ~ _MS_
