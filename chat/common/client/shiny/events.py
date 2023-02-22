@@ -62,6 +62,7 @@ def initscr(**kwargs):
     # turn on scrolling
     term_win.scrollok(True)
     msg_win.scrollok(True)
+    term_out_win.scrollok(True)
 
     # pass to kwargs
     kwargs['header_win'] = header_win
@@ -90,8 +91,9 @@ def initialize_curses(header_win=None,
     # define color pairs
     curses.init_pair(1, curses.COLOR_RED, curses.COLOR_BLACK)
     curses.init_pair(2, curses.COLOR_GREEN, curses.COLOR_BLACK)
-    curses.init_color(1, 500, 500, 500)
-    curses.init_pair(3, 1, curses.COLOR_BLACK)
+    curses.init_color(curses.COLOR_MAGENTA, 500, 500, 500)
+    curses.init_pair(3, curses.COLOR_MAGENTA, curses.COLOR_BLACK)
+    curses.init_pair(4, curses.COLOR_WHITE, curses.COLOR_BLACK)
 
     # Print the text in the center of the window
     header_str = "WELCOME TO CHATMAN 262"
@@ -126,7 +128,7 @@ def print_to_term_out(msg, color, term_out_win=None, **kwargs):
     elif color == "gray":
         term_out_win.addstr(1, 1, msg, curses.color_pair(3))
     else:
-        term_out_win.addstr(1, 1, msg)
+        term_out_win.addstr(1, 1, msg, curses.color_pair(4))
 
     term_out_win.noutrefresh()
     curses.doupdate()
