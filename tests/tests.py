@@ -17,13 +17,23 @@ from enum import Enum
 from threading import Thread
 from time import sleep
 
+import pytest
+
+
+# HELPERS
+
 
 class Chat(Enum):
     GRPC = 0
     WIRE = 1
 
 
-def start_client(chat: Chat, host='localhost', port=Config.PORT):
+class TestData():
+    message = "hi"
+    username = "username"
+
+
+def start_client(chat: Chat, host="localhost", port=Config.PORT):
     match chat:
         case Chat.GRPC:
             return grpc_client_entry(host=host, port=port)
@@ -31,7 +41,7 @@ def start_client(chat: Chat, host='localhost', port=Config.PORT):
             return wire_client_entry(host=host, port=port + 1)
 
 
-def start_server(chat: Chat, host='localhost', port=Config.PORT):
+def start_server(chat: Chat, host="localhost", port=Config.PORT):
     match chat:
         case Chat.GRPC:
             grpc_server_main(port=port)
@@ -53,130 +63,124 @@ def request(chat: Chat, opcode: Opcode, **kwargs):
             return wire_client_request(opcode, **kwargs)
 
 
-class Tests:
-
-    @staticmethod
-    def clean_between_tests():
-        Database.delete_all()
-
-    @staticmethod
-    def run_create_account_success(chat: Chat, **kwargs):
-        # Test 1 - create account works
-        response = request(chat,
-                           Opcode.CREATE_ACCOUNT,
-                           username="username",
-                           **kwargs)
-        assert (response.get_error() == '')
-
-    @staticmethod
-    def run_create_account_fail(chat: Chat, **kwargs):
-        # Test 2 - create already created account fails
-        Tests.run_create_account_success(chat, **kwargs)
-        response = request(chat,
-                           Opcode.CREATE_ACCOUNT,
-                           username="username",
-                           **kwargs)
-        assert (response.get_error() != '')
-
-    @staticmethod
-    def run_log_in_account_success(chat: Chat, **kwargs):
-        # Test 3 - log in account works
-        Tests.run_create_account_success(chat, **kwargs)
-        response = request(chat,
-                           Opcode.LOG_IN_ACCOUNT,
-                           username="username",
-                           **kwargs)
-        assert (response.get_error() == '')
-
-    @staticmethod
-    def run_log_in_account_fail(chat: Chat, **kwargs):
-        # Test 4 - log in nonexistant account fails
-        response = request(chat,
-                           Opcode.LOG_IN_ACCOUNT,
-                           username="username",
-                           **kwargs)
-        assert (response.get_error() != '')
-
-    @staticmethod
-    def run_list_accounts_success(chat: Chat, **kwargs):
-        # Test 3 - list accounts works
-        Tests.run_log_in_account_success(chat, **kwargs)
-        response = request(chat,
-                           Opcode.LIST_ACCOUNTS,
-                           text_wildcard="username",
-                           **kwargs)
-        assert (len(response.get_accounts()) == 1)
-
-    @staticmethod
-    def run_list_accounts_fail(chat: Chat, **kwargs):
-        # Test 4 - list account "fails"
-        Tests.run_log_in_account_success(chat, **kwargs)
-        response = request(chat,
-                           Opcode.LIST_ACCOUNTS,
-                           text_wildcard="username2",
-                           **kwargs)
-        assert (len(response.get_accounts()) == 0)
-
-    @staticmethod
-    def run_send_message_success(chat: Chat, **kwargs):
-        # Test 3 - list accounts works
-        Tests.run_log_in_account_success(chat, **kwargs)
-        response = request(chat,
-                           Opcode.SEND_MESSAGE,
-                           sender_username="username",
-                           recipient_username="username",
-                           message="hi",
-                           **kwargs)
-        assert (response.get_error() == '')
-
-    @staticmethod
-    def run_send_message_fail(chat: Chat, **kwargs):
-        # Test 4 - list account "fails"
-        Tests.run_log_in_account_success(chat, **kwargs)
-        response = request(chat,
-                           Opcode.SEND_MESSAGE,
-                           sender_username="username",
-                           recipient_username="bad",
-                           message="hi",
-                           **kwargs)
-        assert (response.get_error() != '')
+def clean_between_tests():
+    Database.delete_all()
 
 
-def run_tests(chat: Chat):
-    start_server_thread(chat)
-    sleep(0.1)
-    kwargs = start_client(chat)
-
-    # Create accounts test
-    Tests.run_create_account_success(chat, **kwargs)
-    Tests.clean_between_tests()
-    Tests.run_create_account_fail(chat, **kwargs)
-    Tests.clean_between_tests()
-
-    # Login accounts test
-    Tests.run_log_in_account_success(chat, **kwargs)
-    Tests.clean_between_tests()
-    Tests.run_log_in_account_fail(chat, **kwargs)
-    Tests.clean_between_tests()
-
-    # List accounts test
-    Tests.run_list_accounts_success(chat, **kwargs)
-    Tests.clean_between_tests()
-    Tests.run_list_accounts_fail(chat, **kwargs)
-    Tests.clean_between_tests()
-
-    # Send messages test
-    Tests.run_send_message_success(chat, **kwargs)
-    Tests.clean_between_tests()
-    Tests.run_send_message_fail(chat, **kwargs)
-    Tests.clean_between_tests()
-
-    return
+def create_account(chat: Chat, **kwargs):
+    return request(chat,
+                   Opcode.CREATE_ACCOUNT,
+                   username=TestData.username,
+                   **kwargs)
 
 
-def test_wire():
-    run_tests(Chat.WIRE)
+def log_in_account(chat: Chat, **kwargs):
+    return request(chat,
+                   Opcode.LOG_IN_ACCOUNT,
+                   username=TestData.username,
+                   **kwargs)
 
 
-def test_grpc():
-    run_tests(Chat.GRPC)
+def list_accounts(chat: Chat, text_wildcard: str, **kwargs):
+    return request(chat,
+                   Opcode.LIST_ACCOUNTS,
+                   text_wildcard=text_wildcard,
+                   **kwargs)
+
+
+def send_message(chat: Chat, message: str, recipient_username: str, **kwargs):
+    return request(chat,
+                   Opcode.SEND_MESSAGE,
+                   message=message,
+                   recipient_username=recipient_username,
+                   sender_username=TestData.username,
+                   **kwargs)
+
+
+# TESTS
+
+
+@pytest.fixture(scope="session")
+def kwargs():
+    kwargs = {}
+    for chat in [Chat.WIRE, Chat.GRPC]:
+        start_server_thread(chat)
+        sleep(0.1)
+        kwargs.update(start_client(chat))
+    return kwargs
+
+
+@pytest.mark.parametrize("chat", [Chat.WIRE, Chat.GRPC])
+def test_create_account_success(chat: Chat, kwargs):
+    clean_between_tests()
+
+    response = create_account(chat, **kwargs)
+    assert (len(response.get_error()) == 0)
+
+
+@pytest.mark.parametrize("chat", [Chat.WIRE, Chat.GRPC])
+def test_create_account_error(chat: Chat, kwargs):
+    clean_between_tests()
+    create_account(chat, **kwargs)
+
+    response = create_account(chat, **kwargs)
+    assert (len(response.get_error()) != 0)
+
+
+@pytest.mark.parametrize("chat", [Chat.WIRE, Chat.GRPC])
+def test_log_in_account_success(chat: Chat, kwargs):
+    clean_between_tests()
+    create_account(chat, **kwargs)
+
+    response = log_in_account(chat, **kwargs)
+    assert (len(response.get_error()) == 0)
+
+
+@pytest.mark.parametrize("chat", [Chat.WIRE, Chat.GRPC])
+def test_log_in_account_error(chat: Chat, kwargs):
+    clean_between_tests()
+
+    response = log_in_account(chat, **kwargs)
+    assert (len(response.get_error()) != 0)
+
+
+@pytest.mark.parametrize("chat", [Chat.WIRE, Chat.GRPC])
+def test_list_accounts_success(chat: Chat, kwargs):
+    clean_between_tests()
+    create_account(chat, **kwargs)
+
+    response = list_accounts(chat, TestData.username, **kwargs)
+    assert (len(response.get_accounts()) == 1)
+
+
+@pytest.mark.parametrize("chat", [Chat.WIRE, Chat.GRPC])
+def test_list_accounts_error(chat: Chat, kwargs):
+    clean_between_tests()
+    create_account(chat, **kwargs)
+
+    response = list_accounts(chat, TestData.username + "2", **kwargs)
+    assert (len(response.get_accounts()) == 0)
+
+
+@pytest.mark.parametrize("chat", [Chat.WIRE, Chat.GRPC])
+def test_send_message_success(chat: Chat, kwargs):
+    clean_between_tests()
+    create_account(chat, **kwargs)
+
+    response = send_message(chat,
+                            recipient_username=TestData.username,
+                            message=TestData.message,
+                            **kwargs)
+    assert (len(response.get_error()) == 0)
+
+
+@pytest.mark.parametrize("chat", [Chat.WIRE, Chat.GRPC])
+def test_send_message_error(chat: Chat, kwargs):
+    clean_between_tests()
+    create_account(chat, **kwargs)
+
+    response = send_message(chat,
+                            recipient_username=TestData.username + "2",
+                            message=TestData.message,
+                            **kwargs)
+    assert (len(response.get_error()) != 0)
