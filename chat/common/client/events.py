@@ -192,7 +192,9 @@ def main(entry: Callable, request: Callable, handler: Callable, **kwargs):
                                        username=username,
                                        **kwargs)
                     if response.get_error() == '':
-                        print('\n""""""""""""""""""""\nGOODBYE FROM CHATMAN\n""""""""""""""""""""\n')
+                        print('\n""""""""""""""""""""'
+                              '\nGOODBYE FROM CHATMAN'
+                              '\n""""""""""""""""""""\n')
                         break
                     else:
                         print(f'\n{response.get_error()!s}\n')

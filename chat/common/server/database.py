@@ -3,7 +3,7 @@
 
 from chat.common.models import Account, Message
 from threading import Lock
-from typing import Dict, Optional
+from typing import Dict
 
 
 class Database(object):
@@ -78,8 +78,8 @@ class Database(object):
             messages = cls._messages[recipient_username]
             recipient_messages = [msg for msg in messages
                                   if not msg.get_delivered() and
-                                    (not logged_in or
-                                     msg.get_recipient_logged_in())]
+                                  (not logged_in or
+                                   msg.get_recipient_logged_in())]
         return recipient_messages
 
     @classmethod
