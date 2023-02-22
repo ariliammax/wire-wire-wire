@@ -23,11 +23,15 @@ import threading
 
 
 def entry(**kwargs):
+    """Start the socket for the server.
+    """
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.bind((Config.HOST, Config.PORT))
 
 
 def handle_connection(connection):
+    """The steady state of the server once a connection is established.
+    """
     username = None
     try:
         # TODO: maybe if two devices same acc (out of spec, cf Ed)
@@ -85,6 +89,8 @@ def handle_connection(connection):
 
 
 def handler(err: Exception, s: Optional[socket.socket] = None, **kwargs):
+    """Handle errors if they come up. i.e. close the socket.
+    """
     if s is not None:
         s.shutdown()
         s.close()
@@ -92,6 +98,8 @@ def handler(err: Exception, s: Optional[socket.socket] = None, **kwargs):
 
 
 def main(host=Config.HOST, port=Config.PORT, **kwargs):
+    """Start a server and keep on listening.
+    """
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind((host, port))
         s.listen()

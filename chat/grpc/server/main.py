@@ -13,6 +13,11 @@ import chat.grpc.grpcio.proto_pb2_grpc as proto_pb2_grpc
 
 
 class ChatServicer(proto_pb2_grpc.ChatServicer):
+    """Actually pass all of the endpoints to `Events`.
+        There's probably a nice way to automate all of this, but I can't be
+        bothered to yet.
+    """
+
     def LogInAccount(self, request, context):
         response = Events.log_in_account(username=request.username)
         return proto_pb2.LogInAccountResponse(error=response.get_error())
@@ -73,6 +78,8 @@ class ChatServicer(proto_pb2_grpc.ChatServicer):
 
 
 def main(port=Config.PORT, **kwargs):
+    """Start a server and keep on listening.
+    """
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=Config
                                                     .MAX_WORKERS))
     proto_pb2_grpc.add_ChatServicer_to_server(ChatServicer(), server)

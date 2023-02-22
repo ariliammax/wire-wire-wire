@@ -19,15 +19,18 @@ from chat.common.server.database import Database
 import time
 
 
-# These are all kwargs accepting, so we can attach to `Opcode`s in the wire
-# protocol so it's a clean lil pipe from the deserialization, or we can call
-# it on-the-nose from gRPC.
 class Events:
+    """All of the operations/events that the server can do, given the object
+        models. I.e. the database actions and creating the responses.
+        These are all kwargs accepting, so we can attach to `Opcode`s in the
+        wire protocol so it's a clean lil pipe from the deserialization, or we
+        can call it on-the-nose from gRPC.
+    """
 
     @staticmethod
     def log_in_account(username: str, **kwargs):
-        # set state (just `username`)
-        username = username
+        """Logs an account in. Sends error if doesn't exist.
+        """
         account = (Account()
                    .set_username(username)
                    .set_logged_in(True))
@@ -38,8 +41,8 @@ class Events:
 
     @staticmethod
     def create_account(username: str, **kwargs):
-        # set state (just `username`)
-        username = username
+        """Creates an account. Sends error if already exists.
+        """
         account = (Account()
                    .set_username(username)
                    .set_logged_in(True))
@@ -50,6 +53,9 @@ class Events:
 
     @staticmethod
     def list_accounts(text_wildcard: str, **kwargs):
+        """Lists all the accounts, subject to some token. Implicitly places
+            a wildcard on both the head and tail.
+        """
         return ListAccountsResponse(
             accounts=[account
                       for _, account in Database.get_accounts().items()
@@ -61,6 +67,9 @@ class Events:
                      recipient_username: str,
                      sender_username: str,
                      **kwargs):
+        """Adds a message to the database (i.e. sent from the sender's
+            perspective). Sends error if recipient doesn't exist.
+        """
         recipient_account = (Account()
                              .set_username(recipient_username))
         if not Database.has_account(recipient_account):
@@ -79,6 +88,9 @@ class Events:
 
     @staticmethod
     def deliver_undelivered_messages(logged_in: bool, username: str, **kwargs):
+        """Delivers any undelivered messages to the recipient. Sends error
+            if there aren't any.
+        """
         messages = []
         account = Database.get_accounts()[username]
         messages = Database.get_messages(account, logged_in)
@@ -91,12 +103,16 @@ class Events:
 
     @staticmethod
     def delete_account(username: str, **kwargs):
+        """Deletes an account.
+        """
         Database.delete_account(Account()
                                 .set_username(username))
         return DeleteAccountResponse(error='')
 
     @staticmethod
     def log_out_account(username: str, **kwargs):
+        """Logs out an account. Sends error if doesn't exist (deleted).
+        """
         if username not in Database._accounts:
             return LogOutAccountResponse(error='This account does not exist.')
         account = (Account()
@@ -107,12 +123,16 @@ class Events:
 
     @staticmethod
     def acknowledge_messages(messages: list, **kwargs):
+        """Acknowledges the receiving of messages, so it's nice and
+            transactional. Won't be marked delivered until now.
+        """
         for message in messages:
             message.set_delivered(True)
             Database.upsert_message(message)
         return AcknowledgeMessagesResponse(error='')
 
 
+# A nice map of `Opcode`s to `Events`.
 EventsRouter = {Opcode.LOG_IN_ACCOUNT:
                 Events.log_in_account,
                 Opcode.CREATE_ACCOUNT:

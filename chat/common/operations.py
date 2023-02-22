@@ -4,7 +4,7 @@
 from enum import Enum
 
 
-# OP CODES
+# The operation codes for all endpoints (and which are serialized in the wire).
 class Opcode(Enum):
     LOG_IN_ACCOUNT = 0
     CREATE_ACCOUNT = 1

@@ -13,6 +13,8 @@ timer = None
 
 
 def print_messages(messages=None, **kwargs):
+    """Prints some `Message`s to the console.
+    """
     formatted_messages = ""
 
     # Create a dictionary to group messages by sender
@@ -42,6 +44,9 @@ def print_messages(messages=None, **kwargs):
 
 
 def poll(request: Callable = None, username: str = None, **kwargs):
+    """Performs a regular `DeliverUndeliveredMessagesRequest` (followed by
+        a `AcknowledgeMessagesRequest`.
+    """
     response = request(opcode=Opcode
                        .DELIVER_UNDELIVERED_MESSAGES,
                        logged_in=True,
@@ -56,14 +61,15 @@ def poll(request: Callable = None, username: str = None, **kwargs):
                     messages=messages,
                     **kwargs)
 
-        print()
         print_messages(messages=messages)
 
     create_poll(request=request, username=username, **kwargs)
 
 
 def create_poll(request: Callable = None, username: str = None, **kwargs):
-    # start polling for new messages, every
+    """Creates the background polling `threading.Timer` that will execute
+        `poll`.
+    """
     global timer
     timer = threading.Timer(interval=Config.POLL_TIME,
                             function=poll,

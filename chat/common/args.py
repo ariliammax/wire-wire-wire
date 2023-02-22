@@ -5,7 +5,9 @@ import argparse
 
 
 def parse_args():
-    """Parse the command line arguments.
+    """Parse the command line arguments (i.e. host and port).
+
+        Returns: an `argparse.Namespace` (filtering out `None` values).
     """
     parser = argparse.ArgumentParser()
     parser.add_argument('--host', type=str, required=False)

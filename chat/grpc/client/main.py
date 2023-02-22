@@ -23,6 +23,8 @@ import chat.grpc.grpcio.proto_pb2_grpc as proto_pb2_grpc
 
 
 def entry(host=Config.HOST, port=Config.PORT, **kwargs):
+    """Establish a connection to the server.
+    """
     channel = grpc.insecure_channel(f'{host!s}:{port!s}')
     kwargs['channel'] = channel
     return kwargs
@@ -38,6 +40,8 @@ def request(opcode: Opcode,
             logged_in: Optional[bool] = None,
             messages: Optional[list] = None,
             **kwargs):
+    """Send a request to the server.
+    """
     stub = proto_pb2_grpc.ChatStub(channel)
 
     match opcode:
@@ -101,12 +105,16 @@ def request(opcode: Opcode,
 def handler(err: Exception,
             channel: Optional[grpc.Channel] = None,
             **kwargs):
+    """Handle errors (i.e. close the channel).
+    """
     if channel is not None:
         channel.close()
     raise err
 
 
 def main(host=Config.HOST, port=Config.PORT, **kwargs):
+    """Start the client.
+    """
     client_main(entry=entry,
                 request=request,
                 handler=handler,

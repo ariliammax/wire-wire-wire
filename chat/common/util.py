@@ -23,16 +23,25 @@ class Model(object):
     """The abstract "models" created from `interface`s.
        Useful for making new models, or (de)serializing.
     """
+
+    # the fields and their types
     _fields: Dict[str, type] = {}
 
+    # the fields and their defaults (not necessary)
     _field_defaults: Dict[str, object] = {}
 
+    # the fields and their deserializers
     _field_deserializers: Dict[str, Callable] = {}
 
+    # the fields and their serializers
     _field_serializers: Dict[str, Callable] = {}
 
+    # the implicit type within a `list` type field, for deserialization.
+    # this makes things ugly in `from_grpc_model` if we had `List[List[..]]`,
+    # but we don't so whatever.
     _fields_list_nested: Dict[str, type] = {}
 
+    # the order to (de)serialize fields in.
     _order_of_fields: List[str] = {}
 
     # TODO: is this necessary? I think not necessarily, but will
@@ -47,17 +56,24 @@ class Model(object):
                         'reserved_fields']
 
     def __eq__(self, other) -> bool:
+        """Test for equality on every field's `__eq__`
+        """
         return len([n for n in self._fields
                     if getattr(self, f'get_{n!s}', lambda: None)() !=
                     getattr(other, f'get_{n!s}', lambda: None)()]) == 0
 
     def __str__(self) -> str:
+        """Concatenates every field's `__str__`
+        """
         return ','.join([f'{n!s}: '
                          f'{getattr(self, f"get_{n!s}", lambda: None)()!s}'
                          for n in self._fields])
 
     @staticmethod
     def default_deserializer(t: Type) -> Optional[Callable]:
+        """The default deserializing function for a type. `None` if not
+            explicit.
+        """
         match t:
             case builtins.bool:
                 return SerializationUtils.deserialize_bool
@@ -74,6 +90,9 @@ class Model(object):
 
     @staticmethod
     def default_serializer(t: Type) -> Optional[Callable]:
+        """The default serializing function for a type. `None` if not
+            explicit.
+        """
         match t:
             case builtins.bool:
                 return SerializationUtils.serialize_bool
@@ -90,6 +109,9 @@ class Model(object):
 
     @staticmethod
     def default_list_deserializer(t: Type) -> Callable:
+        """The default list deserializer if we can deduce the items'
+            default deserializers (via `default_deserializer`).
+        """
         return (lambda d: SerializationUtils.deserialize_list(
                     d,
                     Model.default_deserializer(t),
@@ -97,12 +119,21 @@ class Model(object):
 
     @staticmethod
     def default_list_serializer(t: Type) -> Callable:
+        """The default list serializer if we can deduce the items'
+            default serializers (via `default_serializer`).
+        """
         return (lambda v: SerializationUtils.serialize_list(
                     v,
                     Model.default_serializer(t)))
 
     @classmethod
     def deserialize(cls, data: bytes):
+        """Deserialize a `Model` according to its `order_of_fields` and
+            `field_deserializers`.
+
+            Can cause some headaches on optional arguments, so assume there
+            are no `None` values.
+        """
         # TODO: this can get screw-y with optionals.
         # a janky way of doing it without more code would be just doing it
         # on lists (of max len 1).
@@ -122,6 +153,12 @@ class Model(object):
         return obj
 
     def serialize(self) -> bytes:
+        """Serialize a `Model` according to its `order_of_fields` and
+            `field_serializers`.
+
+            Can cause some headaches on optional arguments, so assume there
+            are no `None` values.
+        """
         return b''.join(self._field_serializers[name](getattr(self,
                                                               f'get_{name!s}',
                                                               lambda:
@@ -130,6 +167,9 @@ class Model(object):
 
     @classmethod
     def from_grpc_model(model, grpc_obj):
+        """Take a `grpcio.Message` subclass instance, and see if we have
+            matching fields, and grab them if so. Nothing fancy.
+        """
         obj = model()
         for name, t in model._fields.items():
             val = getattr(grpc_obj, name, None)
@@ -143,6 +183,9 @@ class Model(object):
         return obj
 
     def as_model(self, model: Type):
+        """Create a new `model` instance from this instance, by copying the
+            fields we share. Nothing fancy.
+        """
         obj = model()
         for name in self._fields:
             getattr(obj, f'set_{name!s}', lambda _: obj)(
@@ -156,6 +199,9 @@ class Model(object):
                           order_of_fields: List[str] = None,
                           fields_list_nested: Dict[str, type] = {},
                           **fields: Dict[str, type]) -> type:
+        """Create a new `Model` subclass with the given class attributes.
+        """
+
         for name in fields:
             if name in Model._reserved_fields:
                 raise ValueError(f'Field \'{name!s}\' is a reserved name.')
@@ -209,6 +255,8 @@ class Model(object):
 
     @classmethod
     def add_getters_setters(model):
+        """Add getters and setters for each field in the model.
+        """
         for name, value in model._fields.items():
 
             if type(value) is not type:
@@ -261,6 +309,8 @@ class Model(object):
 
     @classmethod
     def clean_getters_setters(model):
+        """Remove getters and setters for each field not in the model.
+        """
         for attr_name in dir(model):
             match attr_name[:4]:
                 case 'get_':
@@ -282,6 +332,9 @@ class Model(object):
                    order_of_fields: List[str] = None,
                    fields_list_nested: Dict[str, type] = {},
                    **new_fields: Dict[str, type]) -> type:
+        """The same as `model_with_fields`, but using the initial state
+            of whatever `Model` subclass it's called from, adding on.
+        """
         return Model.model_with_fields(
             field_defaults=dict(list(cls._field_defaults.items()) +
                                 list(field_defaults.items())),
@@ -303,6 +356,9 @@ class Model(object):
                     order_of_fields: List[str] = None,
                     fields_list_nested: Dict[str, type] = {},
                     **rm_fields: Dict[str, type]) -> type:
+        """The same as `model_with_fields`, but using the initial state
+            of whatever `Model` subclass it's called from, removing from.
+        """
         for fname in rm_fields:
             if fname not in cls._fields:
                 raise ValueError(f'Cannot omit field \'{fname!s}\'; '

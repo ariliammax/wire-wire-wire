@@ -1,6 +1,7 @@
 # config.py
 # in chat.common
 
+# Useful configuration constants throughout the codebase.
 class Config:
     HOST = "10.250.210.45"
     MAX_WORKERS = 10

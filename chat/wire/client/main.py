@@ -29,7 +29,8 @@ import socket
 
 
 def entry(host=Config.HOST, port=Config.PORT, **kwargs):
-    # with ..
+    """Establish a connection to the server socket.
+    """
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.connect((host, port))
     kwargs['s'] = s
@@ -46,6 +47,8 @@ def request(opcode: Opcode,
             logged_in: Optional[bool] = None,
             messages: Optional[list] = None,
             **kwargs):
+    """Send a request to the server.
+    """
     obj = None
     match opcode:
         case Opcode.LOG_IN_ACCOUNT:
@@ -94,6 +97,8 @@ def request(opcode: Opcode,
 
 
 def handler(err: Exception, s: Optional[socket.socket] = None, **kwargs):
+    """Handle errors (i.e. close the socket connection).
+    """
     if s is not None:
         s.shutdown()
         s.close()
@@ -101,6 +106,8 @@ def handler(err: Exception, s: Optional[socket.socket] = None, **kwargs):
 
 
 def main(host=Config.HOST, port=Config.PORT, **kwargs):
+    """Start the client.
+    """
     client_main(entry=entry,
                 request=request,
                 handler=handler,
