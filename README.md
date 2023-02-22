@@ -39,15 +39,17 @@ To get the IP address of the host, run
 ipconfig getifaddr en0
 ```
 
-Then put that into `chat/common/config.py` under
+## Running
 
-```python
-class Config:
-    HOST = 'xxx.xx.x.x'  # <- put the target IP of the server here.
+To run the client / server using the wire protocol / gRPC, run
+
+```bash
+python -m chat.[wire|grpc].[client|server].main \
+    [--host=HOST] \
+    [--port=PORT]
 ```
 
-Sometimes, the port also gets blocked up. Change the target port of the server
-in this file also.
+If one port doesn't work, try another!
 
 ## Linting
 
