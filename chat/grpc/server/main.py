@@ -18,6 +18,9 @@ class ChatServicer(proto_pb2_grpc.ChatServicer):
         bothered to yet.
     """
 
+    def __init__(self, verbose=False, **kwargs):
+        self.verbose = verbose
+
     def LogInAccount(self, request, context):
         response = Events.log_in_account(username=request.username)
         return proto_pb2.LogInAccountResponse(error=response.get_error())
@@ -82,7 +85,8 @@ def main(port=Config.PORT, **kwargs):
     """
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=Config
                                                     .MAX_WORKERS))
-    proto_pb2_grpc.add_ChatServicer_to_server(ChatServicer(), server)
+    proto_pb2_grpc.add_ChatServicer_to_server(ChatServicer(**kwargs),
+                                              server)
     server.add_insecure_port(f'[::]:{port!s}')
     server.start()
     server.wait_for_termination()

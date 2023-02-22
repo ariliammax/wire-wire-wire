@@ -10,6 +10,7 @@ def make_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument('--host', type=str, required=False)
     parser.add_argument('--port', type=str, required=False)
+    parser.add_argument('--verbose', action='store_true')
     return parser
 
 

@@ -46,10 +46,38 @@ To run the client / server using the wire protocol / gRPC, run
 ```bash
 python -m chat.[wire|grpc].[client|server].main \
     [--host=HOST] \
-    [--port=PORT]
+    [--port=PORT] \
+    [--verbose]   \
+    [--shiny]
 ```
 
+- `verbose` on a `server` will add logging output of packet sizes.
+
+- `shiny` is an experimental client UI.
+
 If one port doesn't work, try another!
+
+### With packet sizes
+
+For wire, start the server with
+
+```bash
+python -m chat.wire.server.main \
+    [--host=HOST] \
+    [--port=PORT] \
+    --verbose
+```
+
+
+For gRPC, start the server with
+
+```bash
+GRPC_VERBOSITY=DEBUG \
+    GRPC_TRACE=tcp \
+    python -m chat.grpc.server.main \
+    [--host=HOST] \
+    [--port=PORT]
+```
 
 ## Linting
 

@@ -29,7 +29,7 @@ def entry(**kwargs):
     s.bind((Config.HOST, Config.PORT))
 
 
-def handle_connection(connection):
+def handle_connection(connection, **kwargs):
     """The steady state of the server once a connection is established.
     """
     username = None
@@ -44,42 +44,50 @@ def handle_connection(connection):
                 # and so if we update `._logged_in` on the loop exit
                 break
 
-            kwargs = {}
+            event_kwargs = {}
             opcode = BaseRequest.peek_opcode(request)
+
+            if kwargs.get('verbose', False):
+                print(f'{opcode.name!s} request: {len(request)!s}B.')
 
             match opcode:
                 case Opcode.LOG_IN_ACCOUNT:
                     req = CreateAccountRequest.deserialize(request)
-                    kwargs['username'] = req.get_username()
+                    event_kwargs['username'] = req.get_username()
                 case Opcode.CREATE_ACCOUNT:
                     req = LogInAccountRequest.deserialize(request)
-                    kwargs['username'] = req.get_username()
+                    event_kwargs['username'] = req.get_username()
                 case Opcode.LIST_ACCOUNTS:
                     req = ListAccountsRequest.deserialize(request)
-                    kwargs['text_wildcard'] = req.get_text_wildcard()
+                    event_kwargs['text_wildcard'] = req.get_text_wildcard()
                 case Opcode.SEND_MESSAGE:
                     req = SendMessageRequest.deserialize(request)
-                    kwargs['message'] = req.get_message()
-                    kwargs['recipient_username'] = req.get_recipient_username()
-                    kwargs['sender_username'] = req.get_sender_username()
+                    event_kwargs['message'] = req.get_message()
+                    event_kwargs['recipient_username'] = \
+                        req.get_recipient_username()
+                    event_kwargs['sender_username'] = req.get_sender_username()
                 case Opcode.DELIVER_UNDELIVERED_MESSAGES:
                     req = DeliverUndeliveredMessagesRequest.deserialize(
                         request)
-                    kwargs['logged_in'] = req.get_logged_in()
-                    kwargs['username'] = req.get_username()
+                    event_kwargs['logged_in'] = req.get_logged_in()
+                    event_kwargs['username'] = req.get_username()
                 case Opcode.DELETE_ACCOUNT:
                     req = DeleteAccountRequest.deserialize(request)
-                    kwargs['username'] = req.get_username()
+                    event_kwargs['username'] = req.get_username()
                 case Opcode.LOG_OUT_ACCOUNT:
                     req = LogOutAccountRequest.deserialize(request)
-                    kwargs['username'] = req.get_username()
+                    event_kwargs['username'] = req.get_username()
                 case Opcode.ACKNOWLEDGE_MESSAGES:
                     req = AcknowledgeMessagesRequest.deserialize(
                         request)
-                    kwargs['messages'] = req.get_messages()
+                    event_kwargs['messages'] = req.get_messages()
 
-            response = EventsRouter[opcode](**kwargs)
-            connection.sendall(response.serialize())
+            response = EventsRouter[opcode](**event_kwargs)
+            res_packet = response.serialize()
+
+            if kwargs.get('verbose', False):
+                print(f'{opcode.name!s} response: {len(res_packet)!s}B.')
+            connection.sendall(res_packet)
     except Exception as e:
         raise e
 
@@ -110,7 +118,8 @@ def main(host=Config.HOST, port=Config.PORT, **kwargs):
                 connection, _ = s.accept()
                 s.settimeout(None)
                 thread = threading.Thread(target=handle_connection,
-                                          args=[connection])
+                                          args=[connection],
+                                          kwargs=kwargs)
                 thread.start()
                 threads.append(thread)
             except TimeoutError:
