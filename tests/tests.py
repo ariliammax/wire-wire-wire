@@ -98,7 +98,7 @@ class Tests:
         assert (response.get_error() != '')
 
     @staticmethod
-    def run_list_account_success(chat: Chat, **kwargs):
+    def run_list_accounts_success(chat: Chat, **kwargs):
         # Test 3 - list accounts works
         Tests.run_log_in_account_success(chat, **kwargs)
         response = request(chat,
@@ -108,7 +108,7 @@ class Tests:
         assert (len(response.get_accounts()) == 1)
 
     @staticmethod
-    def run_list_account_fail(chat: Chat, **kwargs):
+    def run_list_accounts_fail(chat: Chat, **kwargs):
         # Test 4 - list account "fails"
         Tests.run_log_in_account_success(chat, **kwargs)
         response = request(chat,
@@ -117,20 +117,58 @@ class Tests:
                            **kwargs)
         assert (len(response.get_accounts()) == 0)
 
+    @staticmethod
+    def run_send_message_success(chat: Chat, **kwargs):
+        # Test 3 - list accounts works
+        Tests.run_log_in_account_success(chat, **kwargs)
+        response = request(chat,
+                           Opcode.SEND_MESSAGE,
+                           sender_username="username",
+                           recipient_username="username",
+                           message="hi",
+                           **kwargs)
+        assert (response.get_error() == '')
+
+    @staticmethod
+    def run_send_message_fail(chat: Chat, **kwargs):
+        # Test 4 - list account "fails"
+        Tests.run_log_in_account_success(chat, **kwargs)
+        response = request(chat,
+                           Opcode.SEND_MESSAGE,
+                           sender_username="username",
+                           recipient_username="bad",
+                           message="hi",
+                           **kwargs)
+        assert (response.get_error() != '')
+
 
 def run_tests(chat: Chat):
     start_server_thread(chat)
     sleep(0.1)
     kwargs = start_client(chat)
 
+    # Create accounts test
     Tests.run_create_account_success(chat, **kwargs)
     Tests.clean_between_tests()
     Tests.run_create_account_fail(chat, **kwargs)
     Tests.clean_between_tests()
 
+    # Login accounts test
     Tests.run_log_in_account_success(chat, **kwargs)
     Tests.clean_between_tests()
     Tests.run_log_in_account_fail(chat, **kwargs)
+    Tests.clean_between_tests()
+
+    # List accounts test
+    Tests.run_list_accounts_success(chat, **kwargs)
+    Tests.clean_between_tests()
+    Tests.run_list_accounts_fail(chat, **kwargs)
+    Tests.clean_between_tests()
+
+    # Send messages test
+    Tests.run_send_message_success(chat, **kwargs)
+    Tests.clean_between_tests()
+    Tests.run_send_message_fail(chat, **kwargs)
     Tests.clean_between_tests()
 
     return
