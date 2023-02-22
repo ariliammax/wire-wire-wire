@@ -81,24 +81,24 @@ GRPC_VERBOSITY=DEBUG \
 
 As a note on some packet sizes between the two
 
-| operation | wire | grpc |
-| --------- | ---- | ---- |
-| log in request | 4B | 4B |
-| log in response | 2B | 0B |
-| create request | 4B | 4B |
-| create response | 2B | 0B |
-| list request | 2B | 0B |
-| list response | 7B | 8B |
-| send request | 10B | 12B |
-| send response | 2B | 0B |
-| deliver request | 5B | 4B |
-| deliver response | 20B | 22B |
-| ack request | 19B | 22B |
-| ack response | 2B | 0B |
-| log out request | 4B | 4B |
-| log out response | 2B | 0B |
-| delete request | 4B | 4B |
-| delete response | 2B | 0B |
+| operation | wire | grpc | notes |
+| --------- | ---- | ---- | ----- |
+| log in request | 4B | 4B | username "hi" |
+| log in response | 2B | 0B |  |
+| create request | 4B | 4B | username "hi" |
+| create response | 2B | 0B |  |
+| list request | 2B | 0B | search "" |
+| list response | 7B | 8B | username "hi" and logged in byte |
+| send request | 10B | 12B | to "hi" from "hi" saying "hi" |
+| send response | 2B | 0B |  |
+| deliver request | 5B | 4B | for username "hi" |
+| deliver response | 20B | 22B | msg: to "hi" from "hi" saying "hi" |
+| ack request | 19B | 22B | ack: to "hi" from "hi" saying "hi" |
+| ack response | 2B | 0B |  |
+| log out request | 4B | 4B | username "hi" |
+| log out response | 2B | 0B |  |
+| delete request | 4B | 4B | username "hi" |
+| delete response | 2B | 0B |  |
 
 Some of the differences are because our wire protocol doesn't use `set` bits,
 for some decreases, but we also have to include `opcode`s which increase
