@@ -69,7 +69,7 @@ class SerializationUtils:
             It uses a 'utf-8' encoding, then the first few `bytes` are
             the length of that encoding, followed by the encoding.
         """
-        encoded = str(val or '').encode('utf-8')
+        encoded = (str(val or '').encode('utf-8'))[:Config.STR_MAX_LEN]
         return SerializationUtils.serialize_int(
             len(encoded),
             length=STR_LEN_BITS) + encoded
@@ -114,6 +114,7 @@ class SerializationUtils:
         if val is None:
             val = []
         if remain is None:
+            val = val[:Config.LIST_MAX_LEN]
             return (SerializationUtils.serialize_int(len(val),
                                                      length=LIST_LEN_BITS) +
                     SerializationUtils.serialize_list(val,
