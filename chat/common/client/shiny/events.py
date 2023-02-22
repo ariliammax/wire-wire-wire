@@ -90,6 +90,8 @@ def initialize_curses(header_win=None,
     # define color pairs
     curses.init_pair(1, curses.COLOR_RED, curses.COLOR_BLACK)
     curses.init_pair(2, curses.COLOR_GREEN, curses.COLOR_BLACK)
+    curses.init_color(1, 500, 500, 500)
+    curses.init_pair(3, 1, curses.COLOR_BLACK)
 
     # Print the text in the center of the window
     header_str = "WELCOME TO CHATMAN 262"
@@ -121,6 +123,8 @@ def print_to_term_out(msg, color, term_out_win=None, **kwargs):
         term_out_win.addstr(1, 1, msg, curses.color_pair(1))
     elif color == "green":
         term_out_win.addstr(1, 1, msg, curses.color_pair(2))
+    elif color == "gray":
+        term_out_win.addstr(1, 1, msg, curses.color_pair(3))
     else:
         term_out_win.addstr(1, 1, msg)
 
@@ -131,6 +135,7 @@ def print_to_term_out(msg, color, term_out_win=None, **kwargs):
 def print_messages(messages=None,
                    term_win=None,
                    msg_win=None,
+                   voicemail=False,
                    **kwargs):
     """Prints some `Message`s to the console.
     """
@@ -160,7 +165,10 @@ def print_messages(messages=None,
     formatted_messages = formatted_messages.lstrip()
 
     term_y, term_x = term_win.getyx()
-    msg_win.addstr(formatted_messages)
+    if voicemail:
+        msg_win.addstr(formatted_messages, curses.color_pair(3))
+    else:
+        msg_win.addstr(formatted_messages)
     msg_win.noutrefresh()
     term_win.move(term_y, term_x)
     term_win.noutrefresh()
@@ -357,7 +365,9 @@ def main(entry: Callable, request: Callable, handler: Callable, **kwargs):
                                     messages=messages,
                                     **kwargs)
 
-                        print_messages(messages=messages, **kwargs)
+                        print_messages(messages=messages,
+                                       voicemail=True,
+                                       **kwargs)
                     else:
                         print_to_term_out(f'{response.get_error()!s}',
                                           "red",
