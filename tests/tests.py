@@ -122,7 +122,7 @@ def log_out_account(chat: Chat, username: str = None, **kwargs):
     username = username if username is not None else TestData.username
     return request(chat,
                    Opcode.LOG_OUT_ACCOUNT,
-                   username=TestData.username,
+                   username=username,
                    **kwargs)
 
 
@@ -183,6 +183,10 @@ def test_list_accounts_success(chat: Chat, kwargs):
     assert (len(response.get_error()) == 0)
     assert (response.get_accounts() == [account])
 
+    response = list_accounts(chat, TestData.username[1:-1], **kwargs)
+    assert (len(response.get_error()) == 0)
+    assert (response.get_accounts() == [account])
+
     response = list_accounts(chat, TestData.username, **kwargs)
     assert (len(response.get_error()) == 0)
     assert (response.get_accounts() == [account])
@@ -196,6 +200,10 @@ def test_list_accounts_success(chat: Chat, kwargs):
     assert (len(response.get_error()) == 0)
     assert (response.get_accounts() == [account, account2])
 
+    response = list_accounts(chat, TestData.username[1:-1], **kwargs)
+    assert (len(response.get_error()) == 0)
+    assert (response.get_accounts() == [account, account2])
+
     response = list_accounts(chat, TestData.username, **kwargs)
     assert (len(response.get_error()) == 0)
     assert (response.get_accounts() == [account, account2])
@@ -203,6 +211,39 @@ def test_list_accounts_success(chat: Chat, kwargs):
     response = list_accounts(chat, TestData.username2, **kwargs)
     assert (len(response.get_error()) == 0)
     assert (response.get_accounts() == [account2])
+
+    log_out_account(chat, username=TestData.username2, **kwargs)
+    account2.set_logged_in(False)
+
+    response = list_accounts(chat, "", **kwargs)
+    assert (len(response.get_error()) == 0)
+    assert (response.get_accounts() == [account, account2])
+
+    response = list_accounts(chat, TestData.username[1:-1], **kwargs)
+    assert (len(response.get_error()) == 0)
+    assert (response.get_accounts() == [account, account2])
+
+    response = list_accounts(chat, TestData.username, **kwargs)
+    assert (len(response.get_error()) == 0)
+    assert (response.get_accounts() == [account, account2])
+
+    response = list_accounts(chat, TestData.username2, **kwargs)
+    assert (len(response.get_error()) == 0)
+    assert (response.get_accounts() == [account2])
+
+    delete_account(chat, username=TestData.username2, **kwargs)
+
+    response = list_accounts(chat, "", **kwargs)
+    assert (len(response.get_error()) == 0)
+    assert (response.get_accounts() == [account])
+
+    response = list_accounts(chat, TestData.username[1:-1], **kwargs)
+    assert (len(response.get_error()) == 0)
+    assert (response.get_accounts() == [account])
+
+    response = list_accounts(chat, TestData.username, **kwargs)
+    assert (len(response.get_error()) == 0)
+    assert (response.get_accounts() == [account])
 
 
 @pytest.mark.parametrize("chat", [Chat.WIRE, Chat.GRPC])
