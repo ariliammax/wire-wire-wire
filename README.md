@@ -73,11 +73,32 @@ For gRPC, start the server with
 
 ```bash
 GRPC_VERBOSITY=DEBUG \
-    GRPC_TRACE=tcp \
+    GRPC_TRACE=http \
     python -m chat.grpc.server.main \
     [--host=HOST] \
     [--port=PORT]
 ```
+
+As a note on some packet sizes between the two
+
+| operation | wire | grpc |
+| --------- | ---- | ---- |
+| log in request |  |  |
+| log in response |  |  |
+| create request |  |  |
+| create response |  |  |
+| list request |  |  |
+| list response |  |  |
+| send request |  |  |
+| send response |  |  |
+| deliver request |  |  |
+| deliver response |  |  |
+| ack request |  |  |
+| ack response |  |  |
+| log out request |  |  |
+| log out response |  |  |
+| delete request |  |  |
+| delete response |  |  |
 
 ## Linting
 
