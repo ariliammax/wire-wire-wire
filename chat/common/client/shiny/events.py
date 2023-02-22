@@ -290,14 +290,17 @@ def main(entry: Callable, request: Callable, handler: Callable, **kwargs):
             opcode = term_win.getstr().decode()
 
             if opcode not in [str(i + 1) for i in range(5)]:
-                term_win.addstr('\nInvalid input.\n', curses.color_pair(1))
+                print_to_term_out("Invalid input.",
+                                  "red",
+                                  **kwargs)
                 continue
 
             # + 1 since Opcode.[option above] is one more than printed option
             opcode = Opcode(int(opcode) + 1)
             match opcode:
                 case Opcode.LIST_ACCOUNTS:
-                    text_wildcard = input('> Text Wildcard: ')
+                    term_win.addstr('\n> Text Wildcard: ')
+                    text_wildcard = term_win.getstr().decode()
                     response = request(opcode=Opcode.LIST_ACCOUNTS,
                                        text_wildcard=text_wildcard,
                                        **kwargs)
@@ -307,9 +310,13 @@ def main(entry: Callable, request: Callable, handler: Callable, **kwargs):
                                           for account in accounts]
                     formatted_account_list = ''.join(formatted_accounts)
                     if response.get_error() == '':
-                        print_to_term_out(f'{formatted_account_list!s}',
-                                          "green",
+                        if (len(formatted_accounts) == 0):
+                            print_to_term_out("No matching accounts found.",
+                                          "red",
                                           **kwargs)
+                        else:
+                            print_to_term_out(f'{formatted_account_list!s}',
+                                                **kwargs)
                     else:
                         print_to_term_out(f'{response.get_error()!s}',
                                           "red",
