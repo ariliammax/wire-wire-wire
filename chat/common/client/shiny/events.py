@@ -380,9 +380,6 @@ def main(entry: Callable, request: Callable, handler: Callable, **kwargs):
                                        username=username,
                                        **kwargs)
                     if response.get_error() == '':
-                        print_to_term_out("Your message was sent!",
-                                          "green",
-                                          **kwargs)
                         break
                     else:
                         print_to_term_out(f'{response.get_error()!s}',

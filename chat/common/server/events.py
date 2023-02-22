@@ -105,21 +105,26 @@ class Events:
     def delete_account(username: str, **kwargs):
         """Deletes an account.
         """
-        Database.delete_account(Account()
-                                .set_username(username))
-        return DeleteAccountResponse(error='')
+        account = (Account()
+                    .set_username(username))
+        if Database.has_account(account):
+            Database.delete_account(account)
+            return DeleteAccountResponse(error='')
+        else:
+            return DeleteAccountResponse(error='This account does not exist.')
 
     @staticmethod
     def log_out_account(username: str, **kwargs):
         """Logs out an account. Sends error if doesn't exist (deleted).
         """
-        if username not in Database._accounts:
-            return LogOutAccountResponse(error='This account does not exist.')
         account = (Account()
                    .set_username(username)
                    .set_logged_in(False))
-        Database.upsert_account(account)
-        return LogOutAccountResponse(error='')
+        if not Database.has_account(account):
+            return DeleteAccountResponse(error='This account does not exist.')
+        else:
+            Database.upsert_account(account)
+            return LogOutAccountResponse(error='')
 
     @staticmethod
     def acknowledge_messages(messages: list, **kwargs):

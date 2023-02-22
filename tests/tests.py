@@ -96,6 +96,26 @@ def send_message(chat: Chat, message: str, recipient_username: str, **kwargs):
                    sender_username=TestData.username,
                    **kwargs)
 
+def deliver_undelivered_messages(chat: Chat, username: str, **kwargs):
+    return request(chat,
+                   Opcode.DELIVER_UNDELIVERED_MESSAGES,
+                   logged_in=False,
+                   username=username,
+                   **kwargs)
+
+def delete_account(chat: Chat, **kwargs):
+    return request(chat,
+                   Opcode.DELETE_ACCOUNT,
+                   username=TestData.username,
+                   **kwargs)
+
+
+def log_out_account(chat: Chat, **kwargs):
+    return request(chat,
+                   Opcode.LOG_OUT_ACCOUNT,
+                   username=TestData.username,
+                   **kwargs)
+
 
 # TESTS
 
@@ -183,4 +203,65 @@ def test_send_message_error(chat: Chat, kwargs):
                             recipient_username=TestData.username + "2",
                             message=TestData.message,
                             **kwargs)
+    assert (len(response.get_error()) != 0)
+
+
+@pytest.mark.parametrize("chat", [Chat.WIRE, Chat.GRPC])
+def test_deliver_undelivered_messages_success(chat: Chat, kwargs):
+    clean_between_tests()
+    create_account(chat, **kwargs)
+
+    send_message(chat,
+                recipient_username=TestData.username,
+                message=TestData.message,
+                **kwargs)
+    
+    response = deliver_undelivered_messages(chat,
+                                   username=TestData.username,
+                                   **kwargs)
+    assert (len(response.get_error()) == 0)
+
+
+@pytest.mark.parametrize("chat", [Chat.WIRE, Chat.GRPC])
+def test_deliver_undelivered_messages_error(chat: Chat, kwargs):
+    clean_between_tests()
+    create_account(chat, **kwargs)
+
+    response = deliver_undelivered_messages(chat,
+                                   username=TestData.username,
+                                   **kwargs)
+    assert (len(response.get_error()) != 0)
+
+
+@pytest.mark.parametrize("chat", [Chat.WIRE, Chat.GRPC])
+def test_delete_account_success(chat: Chat, kwargs):
+    clean_between_tests()
+    create_account(chat, **kwargs)
+
+    response = delete_account(chat, **kwargs)
+    assert (len(response.get_error()) == 0)
+
+
+@pytest.mark.parametrize("chat", [Chat.WIRE, Chat.GRPC])
+def test_delete_account_error(chat: Chat, kwargs):
+    clean_between_tests()
+
+    response = delete_account(chat, **kwargs)
+    assert (len(response.get_error()) != 0)
+
+
+@pytest.mark.parametrize("chat", [Chat.WIRE, Chat.GRPC])
+def test_log_out_account_success(chat: Chat, kwargs):
+    clean_between_tests()
+    create_account(chat, **kwargs)
+
+    response = log_out_account(chat, **kwargs)
+    assert (len(response.get_error()) == 0)
+
+
+@pytest.mark.parametrize("chat", [Chat.WIRE, Chat.GRPC])
+def test_log_out_account_error(chat: Chat, kwargs):
+    clean_between_tests()
+
+    response = log_out_account(chat, **kwargs)
     assert (len(response.get_error()) != 0)
