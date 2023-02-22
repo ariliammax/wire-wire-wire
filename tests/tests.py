@@ -1,7 +1,7 @@
 # tests.py
 
 from chat.common.config import Config
-from chat.common.models import Account
+from chat.common.models import Message, Account
 from chat.common.operations import Opcode
 from chat.common.server.database import Database
 from chat.grpc.client.main import (
@@ -101,7 +101,8 @@ def send_message(chat: Chat, message: str, recipient_username: str, **kwargs):
                    **kwargs)
 
 
-def deliver_undelivered_messages(chat: Chat, username: str, **kwargs):
+def deliver_undelivered_messages(chat: Chat, username: str = None, **kwargs):
+    username = username if username is not None else TestData.username
     return request(chat,
                    Opcode.DELIVER_UNDELIVERED_MESSAGES,
                    logged_in=False,
@@ -179,9 +180,11 @@ def test_list_accounts_success(chat: Chat, kwargs):
     account = Account(logged_in=True, username=TestData.username)
 
     response = list_accounts(chat, "", **kwargs)
+    assert (len(response.get_error()) == 0)
     assert (response.get_accounts() == [account])
 
     response = list_accounts(chat, TestData.username, **kwargs)
+    assert (len(response.get_error()) == 0)
     assert (response.get_accounts() == [account])
 
     clean_between_tests()
@@ -190,12 +193,15 @@ def test_list_accounts_success(chat: Chat, kwargs):
     account2 = Account(logged_in=True, username=TestData.username2)
 
     response = list_accounts(chat, "", **kwargs)
+    assert (len(response.get_error()) == 0)
     assert (response.get_accounts() == [account, account2])
 
     response = list_accounts(chat, TestData.username, **kwargs)
+    assert (len(response.get_error()) == 0)
     assert (response.get_accounts() == [account, account2])
 
     response = list_accounts(chat, TestData.username2, **kwargs)
+    assert (len(response.get_error()) == 0)
     assert (response.get_accounts() == [account2])
 
 
@@ -244,15 +250,31 @@ def test_deliver_undelivered_messages_success(chat: Chat, kwargs):
     clean_between_tests()
     create_account(chat, **kwargs)
 
+    message = (Message()
+               .set_delivered(False)
+               .set_message(TestData.message)
+               .set_recipient_logged_in(True)
+               .set_recipient_username(TestData.username)
+               .set_sender_username(TestData.username)
+               .set_time(None))
+
     send_message(chat,
                  recipient_username=TestData.username,
                  message=TestData.message,
                  **kwargs)
 
     response = deliver_undelivered_messages(chat,
-                                            username=TestData.username,
                                             **kwargs)
+
+    response_messages = response.get_messages()
+
     assert (len(response.get_error()) == 0)
+    assert (len(response_messages) == 1)
+
+    for response_message in response_messages:
+        response_message.set_time(None)
+
+    assert ([message] == response_messages)
 
 
 @pytest.mark.parametrize("chat", [Chat.WIRE, Chat.GRPC])
