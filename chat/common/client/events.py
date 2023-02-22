@@ -38,7 +38,7 @@ def print_messages(messages=None, **kwargs):
     # Remove the trailing newline character
     formatted_messages = formatted_messages[:-1]
 
-    print(f'\n{formatted_messages!s}\n\n...', end="")
+    print(f'{formatted_messages!s}\n\n...', end="")
 
 
 def poll(request: Callable = None, username: str = None, **kwargs):
@@ -56,6 +56,7 @@ def poll(request: Callable = None, username: str = None, **kwargs):
                     messages=messages,
                     **kwargs)
 
+        print()
         print_messages(messages=messages)
 
     create_poll(request=request, username=username, **kwargs)
