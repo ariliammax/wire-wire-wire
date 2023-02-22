@@ -308,17 +308,17 @@ def main(entry: Callable, request: Callable, handler: Callable, **kwargs):
                     formatted_accounts = [f'{account.get_username()} (active: '
                                           f'{account.get_logged_in()}), '
                                           for account in accounts]
-                    formatted_account_list = ''.join(formatted_accounts)
-                    formatted_account_list = formatted_account_list.rstrip(', ')
+                    formatted_list = ''.join(formatted_accounts)
+                    formatted_list = formatted_list.rstrip(', ')
                     if response.get_error() == '':
                         if (len(formatted_accounts) == 0):
                             print_to_term_out("No matching accounts found.",
-                                          "red",
-                                          **kwargs)
+                                              "red",
+                                              **kwargs)
                         else:
-                            print_to_term_out(f'{formatted_account_list!s}',
-                                                "white",
-                                                **kwargs)
+                            print_to_term_out(f'{formatted_list!s}',
+                                              "white",
+                                              **kwargs)
                     else:
                         print_to_term_out(f'{response.get_error()!s}',
                                           "red",
@@ -367,9 +367,9 @@ def main(entry: Callable, request: Callable, handler: Callable, **kwargs):
                                        username=username,
                                        **kwargs)
                     if response.get_error() == '':
-                        term_win.addstr('\n""""""""""""""""""""'
-                                        '\nGOODBYE FROM CHATMAN'
-                                        '\n""""""""""""""""""""\n')
+                        print('\n""""""""""""""""""""'
+                              '\nGOODBYE FROM CHATMAN'
+                              '\n""""""""""""""""""""\n')
                         break
                     else:
                         print_to_term_out(f'{response.get_error()!s}',
