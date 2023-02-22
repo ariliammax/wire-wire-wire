@@ -1,7 +1,7 @@
 # Setup and scripts
 
 All scripts mentioned in this document should be ran in the main directory
-(i.e. where you currently are, i.e. [wire/](../wire)).
+(i.e. where you currently are, i.e. [wire/](./)).
 
 ## Module installation and gRPC build
 
@@ -75,7 +75,7 @@ To view the documentation (in `man`), run
 source docs.sh
 ```
 
-To view it on [`localhost:1234/chat`](localhost:1234/chat), run
+To view it on [`localhost:1234/chat`](http://localhost:1234/chat), run
 
 ```bash
 souce docshtml.sh
