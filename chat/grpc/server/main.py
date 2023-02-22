@@ -1,7 +1,7 @@
 # main.py
 # in chat.grpc.server
 
-from chat.common.args import parse_args
+from chat.common.args import parse_server_args as parse_args
 from chat.common.config import Config
 from chat.common.models import Message
 from chat.common.server.events import Events

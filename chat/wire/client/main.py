@@ -1,8 +1,9 @@
 # main.py
 # in chat.wire.client
 
-from chat.common.args import parse_args
+from chat.common.args import parse_client_args as parse_args
 from chat.common.client.events import main as client_main
+from chat.common.client.shiny.events import main as shiny_client_main
 from chat.common.config import Config
 from chat.common.models import (
     AcknowledgeMessagesRequest,
@@ -105,15 +106,23 @@ def handler(err: Exception, s: Optional[socket.socket] = None, **kwargs):
     raise err
 
 
-def main(host=Config.HOST, port=Config.PORT, **kwargs):
+def main(host=Config.HOST, port=Config.PORT, shiny=False, **kwargs):
     """Start the client.
     """
-    client_main(entry=entry,
-                request=request,
-                handler=handler,
-                host=host,
-                port=port,
-                **kwargs)
+    if shiny:
+        shiny_client_main(entry=entry,
+                          request=request,
+                          handler=handler,
+                          host=host,
+                          port=port,
+                          **kwargs)
+    else:
+        client_main(entry=entry,
+                    request=request,
+                    handler=handler,
+                    host=host,
+                    port=port,
+                    **kwargs)
 
 
 if __name__ == '__main__':
