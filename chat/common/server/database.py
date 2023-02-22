@@ -107,3 +107,10 @@ class Database(object):
             cls._accounts.pop(username, None)
         with cls.messages_lock:
             cls._messages.pop(username, None)
+
+    @classmethod
+    def delete_all(cls):
+        with cls.accounts_lock:
+            cls._accounts = {}
+        with cls.messages_lock:
+            cls._messages = {}
