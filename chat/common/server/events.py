@@ -106,7 +106,7 @@ class Events:
         """Deletes an account.
         """
         account = (Account()
-                    .set_username(username))
+                   .set_username(username))
         if Database.has_account(account):
             Database.delete_account(account)
             return DeleteAccountResponse(error='')

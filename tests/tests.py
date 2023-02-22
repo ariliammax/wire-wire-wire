@@ -96,12 +96,14 @@ def send_message(chat: Chat, message: str, recipient_username: str, **kwargs):
                    sender_username=TestData.username,
                    **kwargs)
 
+
 def deliver_undelivered_messages(chat: Chat, username: str, **kwargs):
     return request(chat,
                    Opcode.DELIVER_UNDELIVERED_MESSAGES,
                    logged_in=False,
                    username=username,
                    **kwargs)
+
 
 def delete_account(chat: Chat, **kwargs):
     return request(chat,
@@ -212,13 +214,13 @@ def test_deliver_undelivered_messages_success(chat: Chat, kwargs):
     create_account(chat, **kwargs)
 
     send_message(chat,
-                recipient_username=TestData.username,
-                message=TestData.message,
-                **kwargs)
-    
+                 recipient_username=TestData.username,
+                 message=TestData.message,
+                 **kwargs)
+
     response = deliver_undelivered_messages(chat,
-                                   username=TestData.username,
-                                   **kwargs)
+                                            username=TestData.username,
+                                            **kwargs)
     assert (len(response.get_error()) == 0)
 
 
@@ -228,8 +230,8 @@ def test_deliver_undelivered_messages_error(chat: Chat, kwargs):
     create_account(chat, **kwargs)
 
     response = deliver_undelivered_messages(chat,
-                                   username=TestData.username,
-                                   **kwargs)
+                                            username=TestData.username,
+                                            **kwargs)
     assert (len(response.get_error()) != 0)
 
 
