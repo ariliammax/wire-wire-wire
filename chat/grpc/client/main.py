@@ -1,6 +1,7 @@
 # main.py
 # in chat.grpc.client
 
+from chat.common.args import parse_args
 from chat.common.client.events import main as client_main
 from chat.common.config import Config
 from chat.common.models import (
@@ -21,8 +22,8 @@ import chat.grpc.grpcio.proto_pb2 as proto_pb2
 import chat.grpc.grpcio.proto_pb2_grpc as proto_pb2_grpc
 
 
-def entry(**kwargs):
-    channel = grpc.insecure_channel(Config.HOST + ':' + str(Config.PORT))
+def entry(host=Config.HOST, port=Config.PORT, **kwargs):
+    channel = grpc.insecure_channel(f'{host!s}:{port!s}')
     kwargs['channel'] = channel
     return kwargs
 
@@ -105,7 +106,14 @@ def handler(err: Exception,
     raise err
 
 
-if __name__ == '__main__':
+def main(host=Config.HOST, port=Config.PORT, **kwargs):
     client_main(entry=entry,
                 request=request,
-                handler=handler)
+                handler=handler,
+                host=host,
+                port=port,
+                **kwargs)
+
+
+if __name__ == '__main__':
+    main(**parse_args().__dict__)

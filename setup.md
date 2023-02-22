@@ -56,3 +56,19 @@ To lint the source code, run
 ```bash
 source lint.sh
 ```
+
+## Testing
+
+To run the tests, run
+
+```bash
+source test.sh
+```
+
+## Documentation
+
+To view the documentation, run
+
+```bash
+source docs.sh
+```

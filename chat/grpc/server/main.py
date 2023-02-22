@@ -1,6 +1,7 @@
 # main.py
 # in chat.grpc.server
 
+from chat.common.args import parse_args
 from chat.common.config import Config
 from chat.common.models import Message
 from chat.common.server.events import Events
@@ -71,14 +72,14 @@ class ChatServicer(proto_pb2_grpc.ChatServicer):
         return proto_pb2.LogOutAccountResponse(error=response.get_error())
 
 
-def main():
+def main(port=Config.PORT, **kwargs):
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=Config
                                                     .MAX_WORKERS))
     proto_pb2_grpc.add_ChatServicer_to_server(ChatServicer(), server)
-    server.add_insecure_port(f'[::]:{Config.PORT!s}')
+    server.add_insecure_port(f'[::]:{port!s}')
     server.start()
     server.wait_for_termination()
 
 
 if __name__ == '__main__':
-    main()
+    main(**parse_args().__dict__)

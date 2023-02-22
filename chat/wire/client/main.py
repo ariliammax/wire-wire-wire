@@ -1,6 +1,7 @@
 # main.py
 # in chat.wire.client
 
+from chat.common.args import parse_args
 from chat.common.client.events import main as client_main
 from chat.common.config import Config
 from chat.common.models import (
@@ -27,10 +28,10 @@ from typing import Optional
 import socket
 
 
-def entry(**kwargs):
+def entry(host=Config.HOST, port=Config.PORT, **kwargs):
     # with ..
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.connect((Config.HOST, Config.PORT))
+    s.connect((host, port))
     kwargs['s'] = s
     return kwargs
 
@@ -99,7 +100,14 @@ def handler(err: Exception, s: Optional[socket.socket] = None, **kwargs):
     raise err
 
 
-if __name__ == '__main__':
+def main(host=Config.HOST, port=Config.PORT, **kwargs):
     client_main(entry=entry,
                 request=request,
-                handler=handler)
+                handler=handler,
+                host=host,
+                port=port,
+                **kwargs)
+
+
+if __name__ == '__main__':
+    main(**parse_args().__dict__)

@@ -12,5 +12,7 @@ setup(name='chat',
                    'grpc': 'chat/grpc'},
       install_requires=['flake8',
                         'grpcio',
-                        'grpcio-tools'],
+                        'grpcio-tools',
+                        'pydocs',
+                        'pytest'],
       python_requires='~=3.10')

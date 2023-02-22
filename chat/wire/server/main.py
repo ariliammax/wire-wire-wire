@@ -1,6 +1,7 @@
 # main.py
 # in chat.wire.server
 
+from chat.common.args import parse_args
 from chat.common.config import Config
 from chat.common.models import (
     BaseRequest,
@@ -90,14 +91,9 @@ def handler(err: Exception, s: Optional[socket.socket] = None, **kwargs):
     raise err
 
 
-def main():
-    # server_main(entry=entry,
-    #             # prethread ?
-    #             # spawn ?
-    #             # handle (attached to spawned thread)
-    #             handler=handler)
+def main(host=Config.HOST, port=Config.PORT, **kwargs):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind((Config.HOST, Config.PORT))
+        s.bind((host, port))
         s.listen()
         threads = []
         while True:
@@ -114,4 +110,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    main(**parse_args().__dict__)
