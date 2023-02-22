@@ -8,6 +8,7 @@ from chat.common.models import (
     CreateAccountRequest,
     DeleteAccountRequest,
     DeliverUndeliveredMessagesRequest,
+    ListAccountsRequest,
     LogInAccountRequest,
     LogOutAccountRequest,
     SendMessageRequest,
@@ -49,7 +50,8 @@ def handle_connection(connection):
                     req = LogInAccountRequest.deserialize(request)
                     kwargs['username'] = req.get_username()
                 case Opcode.LIST_ACCOUNTS:
-                    pass
+                    req = ListAccountsRequest.deserialize(request)
+                    kwargs['text_wildcard'] = req.get_text_wildcard()
                 case Opcode.SEND_MESSAGE:
                     req = SendMessageRequest.deserialize(request)
                     kwargs['message'] = req.get_message()

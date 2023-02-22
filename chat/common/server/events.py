@@ -49,9 +49,11 @@ class Events:
         return CreateAccountResponse(error='')
 
     @staticmethod
-    def list_accounts(**kwargs):
+    def list_accounts(text_wildcard: str, **kwargs):
         return ListAccountsResponse(
-            accounts=[acc for _, acc in Database.get_accounts().items()],
+            accounts=[account
+                      for _, account in Database.get_accounts().items()
+                      if text_wildcard in account.get_username()],
             error='')
 
     @staticmethod

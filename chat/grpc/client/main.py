@@ -30,6 +30,7 @@ def entry(**kwargs):
 def request(opcode: Opcode,
             channel: grpc.Channel = None,
             username: Optional[str] = None,
+            text_wildcard: Optional[str] = None,
             message: Optional[str] = None,
             recipient_username: Optional[str] = None,
             sender_username: Optional[str] = None,
@@ -47,7 +48,7 @@ def request(opcode: Opcode,
             res = stub.CreateAccount(req)
             response = CreateAccountResponse.from_grpc_model(res)
         case Opcode.LIST_ACCOUNTS:
-            req = proto_pb2.ListAccountsRequest()
+            req = proto_pb2.ListAccountsRequest(text_wildcard=text_wildcard)
             res = stub.ListAccounts(req)
             response = ListAccountsResponse.from_grpc_model(res)
         case Opcode.SEND_MESSAGE:

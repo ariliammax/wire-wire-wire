@@ -141,15 +141,17 @@ def main(entry: Callable, request: Callable, handler: Callable, **kwargs):
             opcode = Opcode(int(opcode) + 1)
             match opcode:
                 case Opcode.LIST_ACCOUNTS:
+                    text_wildcard = input('> Text Wildcard: ')
                     response = request(opcode=Opcode.LIST_ACCOUNTS,
+                                       text_wildcard=text_wildcard,
                                        **kwargs)
                     accounts = response.get_accounts()
                     formatted_accounts = [f'{account.get_username()} (active: '
-                                          f'{account.get_logged_in()})'
+                                          f'{account.get_logged_in()})\n'
                                           for account in accounts]
-                    formatted_account_list = ', '.join(formatted_accounts)
+                    formatted_account_list = ''.join(formatted_accounts)
                     if response.get_error() == '':
-                        print(f'\nAccounts:\n{formatted_account_list!s}\n')
+                        print(f'\nAccounts:\n{formatted_account_list!s}')
                     else:
                         print(f'\n{response.get_error()!s}\n')
                 case Opcode.SEND_MESSAGE:

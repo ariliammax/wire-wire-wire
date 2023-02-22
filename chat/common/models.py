@@ -110,8 +110,8 @@ CreateAccountResponse = BaseResponse.add_fields_with_opcode(
 
 
 # Function 2: List Accounts
-# TODO: search string
 ListAccountsRequest = BaseRequest.add_fields_with_opcode(
+    text_wildcard=str,
     opcode=Opcode.LIST_ACCOUNTS)
 ListAccountsResponse = BaseResponse.add_fields_with_opcode(
     accounts=list,

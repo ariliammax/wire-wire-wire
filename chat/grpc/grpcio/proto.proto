@@ -47,6 +47,7 @@ message CreateAccountResponse {
 }
 
 message ListAccountsRequest {
+  string text_wildcard = 1;
 }
 
 message ListAccountsResponse {

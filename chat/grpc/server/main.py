@@ -21,7 +21,7 @@ class ChatServicer(proto_pb2_grpc.ChatServicer):
         return proto_pb2.CreateAccountResponse(error=response.get_error())
 
     def ListAccounts(self, request, context):
-        response = Events.list_accounts()
+        response = Events.list_accounts(text_wildcard=request.text_wildcard)
         return proto_pb2.ListAccountsResponse(
             error=response.get_error(),
             accounts=[proto_pb2.Account(logged_in=acc.get_logged_in(),
@@ -55,13 +55,13 @@ class ChatServicer(proto_pb2_grpc.ChatServicer):
         return proto_pb2.AcknowledgeMessagesResponse(
             error=response.get_error())
 
-    def LogOutAccount(self, request, context):
-        response = Events.log_out_account(username=request.username)
-        return proto_pb2.LogOutAccountResponse(error=response.get_error())
-
     def DeleteAccount(self, request, context):
         response = Events.delete_account(username=request.username)
         return proto_pb2.DeleteAccountResponse(error=response.get_error())
+
+    def LogOutAccount(self, request, context):
+        response = Events.log_out_account(username=request.username)
+        return proto_pb2.LogOutAccountResponse(error=response.get_error())
 
 
 def main():

@@ -38,6 +38,7 @@ def entry(**kwargs):
 def request(opcode: Opcode,
             s: socket.socket = None,
             username: Optional[str] = None,
+            text_wildcard: Optional[str] = None,
             message: Optional[str] = None,
             recipient_username: Optional[str] = None,
             sender_username: Optional[str] = None,
@@ -50,7 +51,7 @@ def request(opcode: Opcode,
         case Opcode.CREATE_ACCOUNT:
             obj = CreateAccountRequest(username=username)
         case Opcode.LIST_ACCOUNTS:
-            obj = ListAccountsRequest()
+            obj = ListAccountsRequest(text_wildcard=text_wildcard)
         case Opcode.SEND_MESSAGE:
             obj = SendMessageRequest(
                 message=message,
