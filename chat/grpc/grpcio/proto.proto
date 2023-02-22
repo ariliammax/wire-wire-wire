@@ -23,9 +23,10 @@ message Account {
 message Message {
   bool delivered = 1;
   string message = 2;
-  string recipient_username = 3;
-  string sender_username = 4;
-  int64 time = 5;
+  bool recipient_logged_in = 3;
+  string recipient_username = 4;
+  string sender_username = 5;
+  int64 time = 6;
 }
 
 // OBJECT MODELS
@@ -66,7 +67,8 @@ message SendMessageResponse {
 }
 
 message DeliverUndeliveredMessagesRequest {
-  string username = 1;
+  bool logged_in = 1;
+  string username = 2;
 }
 
 message DeliverUndeliveredMessagesResponse {

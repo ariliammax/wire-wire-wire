@@ -60,6 +60,7 @@ def handle_connection(connection):
                 case Opcode.DELIVER_UNDELIVERED_MESSAGES:
                     req = DeliverUndeliveredMessagesRequest.deserialize(
                         request)
+                    kwargs['logged_in'] = req.get_logged_in()
                     kwargs['username'] = req.get_username()
                 case Opcode.DELETE_ACCOUNT:
                     req = DeleteAccountRequest.deserialize(request)

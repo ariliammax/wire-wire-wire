@@ -66,9 +66,11 @@ class Events:
         if not Database.has_account(recipient_account):
             return SendMessageResponse(
                 error='Recipient account does not exist.')
+        logged_in = Database.get_account_logged_in(recipient_account)
         message = (Message()
                    .set_delivered(False)
                    .set_message(message)
+                   .set_recipient_logged_in(logged_in)
                    .set_recipient_username(recipient_username)
                    .set_sender_username(sender_username)
                    .set_time(int(time.time())))
@@ -76,10 +78,10 @@ class Events:
         return SendMessageResponse(error='')
 
     @staticmethod
-    def deliver_undelivered_messages(username: str, **kwargs):
+    def deliver_undelivered_messages(logged_in: bool, username: str, **kwargs):
         messages = []
         account = Database.get_accounts()[username]
-        messages = Database.get_messages(account)
+        messages = Database.get_messages(account, logged_in)
         if not messages:
             return DeliverUndeliveredMessagesResponse(
                 error='No new messages!',

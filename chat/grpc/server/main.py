@@ -37,15 +37,22 @@ class ChatServicer(proto_pb2_grpc.ChatServicer):
 
     def DeliverUndeliveredMessages(self, request, context):
         response = Events.deliver_undelivered_messages(
+            logged_in=request.logged_in,
             username=request.username)
         return proto_pb2.DeliverUndeliveredMessagesResponse(
             error=response.get_error(),
-            messages=[proto_pb2.Message(sender_username=msg
-                                        .get_sender_username(),
+            messages=[proto_pb2.Message(message=msg
+                                        .get_message(),
+                                        recipient_logged_in=msg
+                                        .get_recipient_logged_in(),
                                         recipient_username=msg
                                         .get_recipient_username(),
-                                        message=msg.get_message(),
-                                        time=msg.get_time())
+                                        sender_username=msg
+                                        .get_sender_username(),
+                                        time=msg
+                                        .get_time(),
+                                        delivered=msg
+                                        .get_delivered())
                       for msg in response.get_messages()])
 
     def AcknowledgeMessages(self, request, context):

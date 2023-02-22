@@ -42,6 +42,7 @@ def request(opcode: Opcode,
             message: Optional[str] = None,
             recipient_username: Optional[str] = None,
             sender_username: Optional[str] = None,
+            logged_in: Optional[bool] = None,
             messages: Optional[list] = None,
             **kwargs):
     obj = None
@@ -56,10 +57,11 @@ def request(opcode: Opcode,
             obj = SendMessageRequest(
                 message=message,
                 recipient_username=recipient_username,
-                sender_username=sender_username,
-            )
+                sender_username=sender_username)
         case Opcode.DELIVER_UNDELIVERED_MESSAGES:
-            obj = DeliverUndeliveredMessagesRequest(username=username)
+            obj = DeliverUndeliveredMessagesRequest(
+                logged_in=logged_in,
+                username=username)
         case Opcode.DELETE_ACCOUNT:
             obj = DeleteAccountRequest(username=username)
         case Opcode.LOG_OUT_ACCOUNT:

@@ -15,6 +15,7 @@ Account = Model.model_with_fields(logged_in=bool,
 
 Message = Model.model_with_fields(delivered=bool,
                                   message=str,
+                                  recipient_logged_in=bool,
                                   recipient_username=str,
                                   sender_username=str,
                                   time=int)
@@ -132,6 +133,7 @@ SendMessageResponse = BaseResponse.add_fields_with_opcode(
 
 # Function 4: Deliver Undelivered Messages
 DeliverUndeliveredMessagesRequest = BaseRequest.add_fields_with_opcode(
+    logged_in=bool,
     username=str,
     opcode=Opcode.DELIVER_UNDELIVERED_MESSAGES)
 DeliverUndeliveredMessagesResponse = BaseResponse.add_fields_with_opcode(

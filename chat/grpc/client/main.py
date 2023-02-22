@@ -34,6 +34,7 @@ def request(opcode: Opcode,
             message: Optional[str] = None,
             recipient_username: Optional[str] = None,
             sender_username: Optional[str] = None,
+            logged_in: Optional[bool] = None,
             messages: Optional[list] = None,
             **kwargs):
     stub = proto_pb2_grpc.ChatStub(channel)
@@ -60,6 +61,7 @@ def request(opcode: Opcode,
             response = SendMessageResponse.from_grpc_model(res)
         case Opcode.DELIVER_UNDELIVERED_MESSAGES:
             req = proto_pb2.DeliverUndeliveredMessagesRequest(
+                logged_in=logged_in,
                 username=username)
             res = stub.DeliverUndeliveredMessages(req)
             response = DeliverUndeliveredMessagesResponse.from_grpc_model(res)
@@ -78,6 +80,8 @@ def request(opcode: Opcode,
                 messages=[proto_pb2.Message(
                               message=message
                               .get_message(),
+                              recipient_logged_in=message
+                              .get_recipient_logged_in(),
                               recipient_username=message
                               .get_recipient_username(),
                               sender_username=message

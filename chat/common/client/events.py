@@ -44,6 +44,7 @@ def print_messages(messages=None, **kwargs):
 def poll(request: Callable = None, username: str = None, **kwargs):
     response = request(opcode=Opcode
                        .DELIVER_UNDELIVERED_MESSAGES,
+                       logged_in=True,
                        username=username,
                        **kwargs)
     if response.get_error() == '':
@@ -170,6 +171,7 @@ def main(entry: Callable, request: Callable, handler: Callable, **kwargs):
                 case Opcode.DELIVER_UNDELIVERED_MESSAGES:
                     response = request(opcode=Opcode
                                        .DELIVER_UNDELIVERED_MESSAGES,
+                                       logged_in=False,
                                        username=username,
                                        **kwargs)
                     if response.get_error() == '':
