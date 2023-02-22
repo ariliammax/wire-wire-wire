@@ -83,22 +83,28 @@ As a note on some packet sizes between the two
 
 | operation | wire | grpc |
 | --------- | ---- | ---- |
-| log in request |  |  |
-| log in response |  |  |
-| create request |  |  |
-| create response |  |  |
-| list request |  |  |
-| list response |  |  |
-| send request |  |  |
-| send response |  |  |
-| deliver request |  |  |
-| deliver response |  |  |
-| ack request |  |  |
-| ack response |  |  |
-| log out request |  |  |
-| log out response |  |  |
-| delete request |  |  |
-| delete response |  |  |
+| log in request | 4B | 4B |
+| log in response | 2B | 0B |
+| create request | 4B | 4B |
+| create response | 2B | 0B |
+| list request | 2B | 0B |
+| list response | 7B | 8B |
+| send request | 10B | 12B |
+| send response | 2B | 0B |
+| deliver request | 5B | 4B |
+| deliver response | 20B | 22B |
+| ack request | 19B | 22B |
+| ack response | 2B | 0B |
+| log out request | 4B | 4B |
+| log out response | 2B | 0B |
+| delete request | 4B | 4B |
+| delete response | 2B | 0B |
+
+Some of the differences are because our wire protocol doesn't use `set` bits,
+for some decreases, but we also have to include `opcode`s which increase
+some request sizes, and we give an empty error on response rather than no
+response, which we have to encode the length of the empty string using some
+bytes.
 
 ## Linting
 
