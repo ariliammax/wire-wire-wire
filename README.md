@@ -69,8 +69,14 @@ source test.sh
 
 ## Documentation
 
-To view the documentation, run
+To view the documentation (in `man`), run
 
 ```bash
 source docs.sh
+```
+
+To view it on [`localhost:1234/chat`](localhost:1234/chat), run
+
+```bash
+souce docshtml.sh
 ```

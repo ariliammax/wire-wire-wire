@@ -1,1 +1,1 @@
-python -m pydocs chat
+python -m pydoc chat
