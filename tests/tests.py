@@ -1,6 +1,7 @@
 # tests.py
 
 from chat.common.config import Config
+from chat.common.models import Account
 from chat.common.operations import Opcode
 from chat.common.server.database import Database
 from chat.grpc.client.main import (
@@ -31,6 +32,7 @@ class Chat(Enum):
 class TestData():
     message = "hi"
     username = "username"
+    username2 = "username2"
 
 
 def start_client(chat: Chat, host="localhost", port=Config.PORT):
@@ -67,17 +69,19 @@ def clean_between_tests():
     Database.delete_all()
 
 
-def create_account(chat: Chat, **kwargs):
+def create_account(chat: Chat, username: str = None, **kwargs):
+    username = username if username is not None else TestData.username
     return request(chat,
                    Opcode.CREATE_ACCOUNT,
-                   username=TestData.username,
+                   username=username,
                    **kwargs)
 
 
-def log_in_account(chat: Chat, **kwargs):
+def log_in_account(chat: Chat, username: str = None, **kwargs):
+    username = username if username is not None else TestData.username
     return request(chat,
                    Opcode.LOG_IN_ACCOUNT,
-                   username=TestData.username,
+                   username=username,
                    **kwargs)
 
 
@@ -105,14 +109,16 @@ def deliver_undelivered_messages(chat: Chat, username: str, **kwargs):
                    **kwargs)
 
 
-def delete_account(chat: Chat, **kwargs):
+def delete_account(chat: Chat, username: str = None, **kwargs):
+    username = username if username is not None else TestData.username
     return request(chat,
                    Opcode.DELETE_ACCOUNT,
-                   username=TestData.username,
+                   username=username,
                    **kwargs)
 
 
-def log_out_account(chat: Chat, **kwargs):
+def log_out_account(chat: Chat, username: str = None, **kwargs):
+    username = username if username is not None else TestData.username
     return request(chat,
                    Opcode.LOG_OUT_ACCOUNT,
                    username=TestData.username,
@@ -170,9 +176,27 @@ def test_log_in_account_error(chat: Chat, kwargs):
 def test_list_accounts_success(chat: Chat, kwargs):
     clean_between_tests()
     create_account(chat, **kwargs)
+    account = Account(logged_in=True, username=TestData.username)
+
+    response = list_accounts(chat, "", **kwargs)
+    assert (response.get_accounts() == [account])
 
     response = list_accounts(chat, TestData.username, **kwargs)
-    assert (len(response.get_accounts()) == 1)
+    assert (response.get_accounts() == [account])
+
+    clean_between_tests()
+    create_account(chat, **kwargs)
+    create_account(chat, username=TestData.username2, **kwargs)
+    account2 = Account(logged_in=True, username=TestData.username2)
+
+    response = list_accounts(chat, "", **kwargs)
+    assert (response.get_accounts() == [account, account2])
+
+    response = list_accounts(chat, TestData.username, **kwargs)
+    assert (response.get_accounts() == [account, account2])
+
+    response = list_accounts(chat, TestData.username2, **kwargs)
+    assert (response.get_accounts() == [account2])
 
 
 @pytest.mark.parametrize("chat", [Chat.WIRE, Chat.GRPC])
@@ -180,7 +204,7 @@ def test_list_accounts_error(chat: Chat, kwargs):
     clean_between_tests()
     create_account(chat, **kwargs)
 
-    response = list_accounts(chat, TestData.username + "2", **kwargs)
+    response = list_accounts(chat, TestData.username2, **kwargs)
     assert (len(response.get_accounts()) == 0)
 
 
@@ -188,9 +212,16 @@ def test_list_accounts_error(chat: Chat, kwargs):
 def test_send_message_success(chat: Chat, kwargs):
     clean_between_tests()
     create_account(chat, **kwargs)
+    create_account(chat, username=TestData.username2, **kwargs)
 
     response = send_message(chat,
                             recipient_username=TestData.username,
+                            message=TestData.message,
+                            **kwargs)
+    assert (len(response.get_error()) == 0)
+
+    response = send_message(chat,
+                            recipient_username=TestData.username2,
                             message=TestData.message,
                             **kwargs)
     assert (len(response.get_error()) == 0)
@@ -202,7 +233,7 @@ def test_send_message_error(chat: Chat, kwargs):
     create_account(chat, **kwargs)
 
     response = send_message(chat,
-                            recipient_username=TestData.username + "2",
+                            recipient_username=TestData.username2,
                             message=TestData.message,
                             **kwargs)
     assert (len(response.get_error()) != 0)
