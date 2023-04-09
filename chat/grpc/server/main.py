@@ -80,14 +80,15 @@ class ChatServicer(proto_pb2_grpc.ChatServicer):
         return proto_pb2.LogOutAccountResponse(error=response.get_error())
 
 
-def main(port=Config.PORT, **kwargs):
+def main(machine_id=0, **kwargs):
     """Start a server and keep on listening.
     """
+    Events.startup(machine_id=machine_id)
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=Config
                                                     .MAX_WORKERS))
     proto_pb2_grpc.add_ChatServicer_to_server(ChatServicer(**kwargs),
                                               server)
-    server.add_insecure_port(f'[::]:{port!s}')
+    server.add_insecure_port(f'[::]:{Config.ADDRESSES[machine_id][1]!s}')
     server.start()
     server.wait_for_termination()
 

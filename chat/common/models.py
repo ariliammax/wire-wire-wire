@@ -44,14 +44,14 @@ class BaseRequest(Model.model_with_fields(opcode=int)):
         return SerializationUtils.serialize_int(val, length=1)
 
     @staticmethod
-    def peek_opcode(data: bytes) -> Opcode:
+    def peek_opcode(data: bytes) -> int:
         """Peek at the first byte of some `bytes` to determine the
             `Opcode`.
         """
-        return Opcode(BaseRequest.deserialize_opcode(data[:1]))
+        return BaseRequest.deserialize_opcode(data[:1])
 
     @staticmethod
-    def add_fields_with_opcode(opcode: int,
+    def add_fields_with_opcode(opcode: Opcode,
                                field_defaults: Dict[str, object] = {},
                                field_deserializers: Dict[str, Callable] = {},
                                field_serializers: Dict[str, Callable] = {},
@@ -66,7 +66,7 @@ class BaseRequest(Model.model_with_fields(opcode=int)):
         class __impl_class__(
             BaseRequest.add_fields(
                 field_defaults=dict(list(field_defaults.items()) +
-                                    list(dict(opcode=opcode.value).items())),
+                                    list(dict(opcode=opcode).items())),
                 field_deserializers=dict(list(field_deserializers.items()) +
                                          [('opcode',
                                            BaseRequest.deserialize_opcode)]),
@@ -101,7 +101,7 @@ class BaseResponse(BaseRequest.add_fields(error=str)):
         class __impl_class__(
             BaseResponse.add_fields(
                 field_defaults=dict(list(field_defaults.items()) +
-                                    list(dict(opcode=opcode.value).items())),
+                                    list(dict(opcode=opcode).items())),
                 field_deserializers=dict(list(field_deserializers.items()) +
                                          [('opcode',
                                            BaseRequest.deserialize_opcode)]),
@@ -121,25 +121,25 @@ class BaseResponse(BaseRequest.add_fields(error=str)):
 # Function 0: Log In Account
 LogInAccountRequest = BaseRequest.add_fields_with_opcode(
     username=str,
-    opcode=Opcode.LOG_IN_ACCOUNT)
+    opcode=Opcode.LOG_IN_ACCOUNT.value)
 LogInAccountResponse = BaseResponse.add_fields_with_opcode(
-    opcode=Opcode.LOG_IN_ACCOUNT)
+    opcode=Opcode.LOG_IN_ACCOUNT.value)
 
 # Function 1: Create Account
 CreateAccountRequest = BaseRequest.add_fields_with_opcode(
     username=str,
-    opcode=Opcode.CREATE_ACCOUNT)
+    opcode=Opcode.CREATE_ACCOUNT.value)
 CreateAccountResponse = BaseResponse.add_fields_with_opcode(
-    opcode=Opcode.CREATE_ACCOUNT)
+    opcode=Opcode.CREATE_ACCOUNT.value)
 
 
 # Function 2: List Accounts
 ListAccountsRequest = BaseRequest.add_fields_with_opcode(
     text_wildcard=str,
-    opcode=Opcode.LIST_ACCOUNTS)
+    opcode=Opcode.LIST_ACCOUNTS.value)
 ListAccountsResponse = BaseResponse.add_fields_with_opcode(
     accounts=list,
-    opcode=Opcode.LIST_ACCOUNTS,
+    opcode=Opcode.LIST_ACCOUNTS.value,
     fields_list_nested=dict(
         accounts=Account))
 
@@ -149,19 +149,19 @@ SendMessageRequest = BaseRequest.add_fields_with_opcode(
     message=str,
     recipient_username=str,
     sender_username=str,
-    opcode=Opcode.SEND_MESSAGE)
+    opcode=Opcode.SEND_MESSAGE.value)
 SendMessageResponse = BaseResponse.add_fields_with_opcode(
-    opcode=Opcode.SEND_MESSAGE)
+    opcode=Opcode.SEND_MESSAGE.value)
 
 
 # Function 4: Deliver Undelivered Messages
 DeliverUndeliveredMessagesRequest = BaseRequest.add_fields_with_opcode(
     logged_in=bool,
     username=str,
-    opcode=Opcode.DELIVER_UNDELIVERED_MESSAGES)
+    opcode=Opcode.DELIVER_UNDELIVERED_MESSAGES.value)
 DeliverUndeliveredMessagesResponse = BaseResponse.add_fields_with_opcode(
     messages=list,
-    opcode=Opcode.DELIVER_UNDELIVERED_MESSAGES,
+    opcode=Opcode.DELIVER_UNDELIVERED_MESSAGES.value,
     fields_list_nested=dict(
         messages=Message))
 
@@ -169,24 +169,24 @@ DeliverUndeliveredMessagesResponse = BaseResponse.add_fields_with_opcode(
 # Function 4.1: Acknowledge Messages
 AcknowledgeMessagesRequest = BaseRequest.add_fields_with_opcode(
     messages=list,
-    opcode=Opcode.ACKNOWLEDGE_MESSAGES,
+    opcode=Opcode.ACKNOWLEDGE_MESSAGES.value,
     fields_list_nested=dict(
         messages=Message))
 AcknowledgeMessagesResponse = BaseResponse.add_fields_with_opcode(
-    opcode=Opcode.ACKNOWLEDGE_MESSAGES)
+    opcode=Opcode.ACKNOWLEDGE_MESSAGES.value)
 
 
 # Function 5: Delete Account
 DeleteAccountRequest = BaseRequest.add_fields_with_opcode(
     username=str,
-    opcode=Opcode.DELETE_ACCOUNT)
+    opcode=Opcode.DELETE_ACCOUNT.value)
 DeleteAccountResponse = BaseResponse.add_fields_with_opcode(
-    opcode=Opcode.DELETE_ACCOUNT)
+    opcode=Opcode.DELETE_ACCOUNT.value)
 
 
 # Function 6: Log Out Account
 LogOutAccountRequest = BaseRequest.add_fields_with_opcode(
     username=str,
-    opcode=Opcode.LOG_OUT_ACCOUNT)
+    opcode=Opcode.LOG_OUT_ACCOUNT.value)
 LogOutAccountResponse = BaseResponse.add_fields_with_opcode(
-    opcode=Opcode.LOG_OUT_ACCOUNT)
+    opcode=Opcode.LOG_OUT_ACCOUNT.value)

@@ -29,7 +29,7 @@ from typing import Optional
 import socket
 
 
-def entry(host=Config.HOST, port=Config.PORT, **kwargs):
+def entry(host=Config.ADDRESSES[0][0], port=Config.ADDRESSES[0][1], **kwargs):
     """Establish a connection to the server socket.
     """
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -106,7 +106,7 @@ def handler(err: Exception, s: Optional[socket.socket] = None, **kwargs):
     raise err
 
 
-def main(host=Config.HOST, port=Config.PORT, shiny=False, **kwargs):
+def main(host=Config.ADDRESSES[0][0], port=Config.ADDRESSES[0][1], shiny=False, **kwargs):
     """Start the client.
     """
     if shiny:

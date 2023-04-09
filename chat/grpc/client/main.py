@@ -23,7 +23,7 @@ import chat.grpc.grpcio.proto_pb2 as proto_pb2
 import chat.grpc.grpcio.proto_pb2_grpc as proto_pb2_grpc
 
 
-def entry(host=Config.HOST, port=Config.PORT, **kwargs):
+def entry(host=Config.ADDRESSES[0][0], port=Config.ADDRESSES[0][1], **kwargs):
     """Establish a connection to the server.
     """
     channel = grpc.insecure_channel(f'{host!s}:{port!s}')
@@ -113,7 +113,7 @@ def handler(err: Exception,
     raise err
 
 
-def main(host=Config.HOST, port=Config.PORT, shiny=False, **kwargs):
+def main(host=Config.ADDRESSES[0][0], port=Config.ADDRESSES[0][1], shiny=False, **kwargs):
     """Start the client.
     """
     if shiny:

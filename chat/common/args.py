@@ -33,6 +33,11 @@ def parse_server_args():
         Returns: an `argparse.Namespace` (filtering out `None` values).
     """
     parser = make_parser()
+    parser.add_argument('--id',
+                        dest='machine_id',
+                        required=True,
+                        type=int,
+                        help='string saying this is the nth machine')
     return argparse.Namespace(**{k: v
                                  for k, v in
                                  parser.parse_args().__dict__.items()

@@ -35,7 +35,7 @@ class TestData():
     username2 = "username2"
 
 
-def start_client(chat: Chat, host="localhost", port=Config.PORT):
+def start_client(chat: Chat, host="localhost", port=Config.ADDRESSES[0][1]):
     match chat:
         case Chat.GRPC:
             return grpc_client_entry(host=host, port=port)
@@ -43,7 +43,7 @@ def start_client(chat: Chat, host="localhost", port=Config.PORT):
             return wire_client_entry(host=host, port=port + 1)
 
 
-def start_server(chat: Chat, host="localhost", port=Config.PORT):
+def start_server(chat: Chat, host="localhost", port=Config.ADDRESSES[0][1]):
     match chat:
         case Chat.GRPC:
             grpc_server_main(port=port)
