@@ -1,3 +1,0 @@
-1,hi ari,1,ari,ari,1681063376
-1,hi | ari,1,ari,ari,1681063392
-1,hi, ari,1,ari,ari,1681063418

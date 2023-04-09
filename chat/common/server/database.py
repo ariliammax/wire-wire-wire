@@ -2,7 +2,9 @@
 # in chat.common.server
 
 from chat.common.config import Config
-from chat.common.models import Account, BaseRequest, Message
+from chat.common.models import Account, Message
+from chat.common.models import BaseRequest, BaseResponse
+from chat.common.serialization import SerializationUtils
 from enum import Enum
 from threading import Lock, Thread
 from typing import Dict
@@ -19,6 +21,8 @@ class DatabaseOpcode(Enum):
     HAS_ACCOUNT = 5
     UPSERT_ACCOUNT = 6
     UPSERT_MESSAGE = 7
+
+    SYNC_DATA = 8
 
 
 class DatabaseRequests:
@@ -50,40 +54,50 @@ class DatabaseRequests:
         opcode=DatabaseOpcode.UPSERT_ACCOUNT.value
     )
     UpsertMessage = BaseRequest.add_fields_with_opcode(
-        message=Message,
+        the_message=Message,  # if this is `message`, `get_message` goes too deep
         opcode=DatabaseOpcode.UPSERT_MESSAGE.value
+    )
+
+    SyncData = BaseRequest.add_fields_with_opcode(
+        accounts=list,
+        messages=list,
+        fields_list_nested=dict(
+            accounts=Account,
+            messages=Message
+        ),
+        opcode=DatabaseOpcode.SYNC_DATA.value
     )
 
 
 class DatabaseResponses:
-    DeleteAccount = BaseRequest.add_fields_with_opcode(
+    DeleteAccount = BaseResponse.add_fields_with_opcode(
         opcode=DatabaseOpcode.DELETE_ACCOUNT.value
     )
-    DeleteAll = BaseRequest.add_fields_with_opcode(
+    DeleteAll = BaseResponse.add_fields_with_opcode(
         opcode=DatabaseOpcode.DELETE_ALL.value
     )
-    GetAccountLoggedIn = BaseRequest.add_fields_with_opcode(
+    GetAccountLoggedIn = BaseResponse.add_fields_with_opcode(
         logged_in=bool,
         opcode=DatabaseOpcode.GET_ACCOUNT_LOGGED_IN.value
     )
-    GetAccounts = BaseRequest.add_fields_with_opcode(
+    GetAccounts = BaseResponse.add_fields_with_opcode(
         accounts=list,
         fields_list_nested=dict(accounts=Account),
         opcode=DatabaseOpcode.GET_ACCOUNTS.value
     )
-    GetMessages = BaseRequest.add_fields_with_opcode(
+    GetMessages = BaseResponse.add_fields_with_opcode(
         messages=list,
         fields_list_nested=dict(messages=Message),
         opcode=DatabaseOpcode.GET_MESSAGES.value
     )
-    HasAccount = BaseRequest.add_fields_with_opcode(
+    HasAccount = BaseResponse.add_fields_with_opcode(
         has_account=bool,
         opcode=DatabaseOpcode.HAS_ACCOUNT.value
     )
-    UpsertAccount = BaseRequest.add_fields_with_opcode(
+    UpsertAccount = BaseResponse.add_fields_with_opcode(
         opcode=DatabaseOpcode.UPSERT_ACCOUNT.value
     )
-    UpsertMessage = BaseRequest.add_fields_with_opcode(
+    UpsertMessage = BaseResponse.add_fields_with_opcode(
         opcode=DatabaseOpcode.UPSERT_MESSAGE.value
     )
 
@@ -113,37 +127,18 @@ class Database(object):
             cls.machine_id = machine_id
 
             try:
-                with open(cls.accounts_file_name(), "r") as file:
-                    lines = file.readlines()
-                    for line in lines:
-                        values = line[:-1].split(",") # removes \n
-                        account = (
-                            Account()
-                            .set_logged_in(values[0] == "1")
-                            .set_username(values[1])
-                        )
-                        cls._accounts[account.get_username()] = account
+                with open(cls.accounts_file_name(), "rb") as file:
+                    content = b''.join(file.readlines())
+                    for account in cls.deserialize_accounts(content):
+                        cls.local_upsert_account(account)
             except FileNotFoundError:
                 pass
 
             try:
-                with open(cls.messages_file_name(), "r") as file:
-                    lines = file.readlines()
-                    for line in lines:
-                        values = line[:-1].split(",") # removes \n
-                        message = (
-                            Message()
-                            .set_delivered(values[0] == "1")
-                            .set_message(values[1])
-                            .set_recipient_logged_in(values[2] == "1")
-                            .set_recipient_username(values[3])
-                            .set_sender_username(values[4])
-                            .set_time(int(values[5]))
-                        )
-                        username = message.get_recipient_username()
-                        if username not in cls._messages:
-                            cls._messages[username] = []
-                        cls._messages[username].append(message)
+                with open(cls.messages_file_name(), "rb") as file:
+                    content = b''.join(file.readlines())
+                    for message in cls.deserialize_messages(content):
+                        cls.local_upsert_message(message)
             except FileNotFoundError:
                 pass
 
@@ -233,79 +228,103 @@ class Database(object):
             thread.join()
 
         def handle_queue_connection(other_machine_id, connection):
-            while True:
-                req = connection.recv(1024)
+            try:
+                while True:
+                    req = connection.recv(1024)
+                    if len(req) == 0:
+                        break
+                    with cls.machine_lock:
+                        if not cls.is_master():
+                            for i in range(len(cls.machines_down)):
+                                if i == cls.machine_id:
+                                    break
+                                cls.machines_down[i] = True
+                    opcode = DatabaseOpcode(BaseRequest.peek_opcode(req))
+                    request = None
+                    response = None
+                    match opcode:
+                        case DatabaseOpcode.DELETE_ACCOUNT:
+                            request = (DatabaseRequests.DeleteAccount
+                                    .deserialize(req))
+                            cls.delete_account(account=request.get_account())
+                            response = DatabaseResponses.DeleteAccount()
+                        case DatabaseOpcode.DELETE_ALL:
+                            request = (DatabaseRequests.DeleteAll
+                                    .deserialize(req))
+                            cls.delete_all()
+                            response = DatabaseResponses.DeleteAll()
+                        case DatabaseOpcode.GET_ACCOUNT_LOGGED_IN:
+                            request = (DatabaseRequests.GetAccountLoggedIn
+                                        .deserialize(req))
+                            response = DatabaseResponses.GetAccountLoggedIn(
+                                logged_in=cls.get_account_logged_in(
+                                    account=request.get_account()
+                                )
+                            )
+                        case DatabaseOpcode.GET_ACCOUNTS:
+                            request = (DatabaseRequests.GetAccounts
+                                    .deserialize(req))
+                            response = DatabaseResponses.GetAccounts(
+                                accounts=[v for v in cls.get_accounts().values()]
+                            )
+                        case DatabaseOpcode.GET_MESSAGES:
+                            request = (DatabaseRequests.GetMessages
+                                    .deserialize(req))
+                            response = DatabaseResponses.GetMessages(
+                                messages=cls.get_messages(
+                                    account=request.get_account(),
+                                    logged_in=request.get_logged_in()
+                                )
+                            )
+                        case DatabaseOpcode.HAS_ACCOUNT:
+                            request = (DatabaseRequests.HasAccount
+                                    .deserialize(req))
+                            response = DatabaseResponses.HasAccount(
+                                has_account=cls.has_account(
+                                    account=request.get_account()
+                                )
+                            )
+                        case DatabaseOpcode.UPSERT_ACCOUNT:
+                            request = (DatabaseRequests.UpsertAccount
+                                    .deserialize(req))
+                            cls.upsert_account(account=request.get_account())
+                            response = DatabaseResponses.UpsertAccount()
+                        case DatabaseOpcode.UPSERT_MESSAGE:
+                            request = (DatabaseRequests.UpsertMessage
+                                        .deserialize(req))
+                            cls.upsert_message(message=request.get_the_message())
+                            response = DatabaseResponses.UpsertMessage()
+                    connection.sendall(response.serialize())
+            except:
+                pass
+            finally:
                 with cls.machine_lock:
-                    if not cls.is_master():
-                        for i in range(len(cls.machines_down)):
-                            if i == cls.machine_id:
-                                break
-                            cls.machines_down[i] = True
-                opcode = DatabaseOpcode(BaseRequest.peek_opcode(req))
-                request = None
-                response = None
-                match opcode:
-                    case DatabaseOpcode.DELETE_ACCOUNT:
-                        request = (DatabaseRequests.DeleteAccount
-                                    .deserialize(req))
-                        cls.delete_account(account=request.get_account())
-                        response = DatabaseResponses.DeleteAccount()
-                    case DatabaseOpcode.DELETE_ALL:
-                        request = (DatabaseRequests.DeleteAll
-                                    .deserialize(req))
-                        cls.delete_all()
-                        response = DatabaseResponses.DeleteAll()
-                    case DatabaseOpcode.GET_ACCOUNT_LOGGED_IN:
-                        request = (DatabaseRequests.GetAccountLoggedIn
-                                    .deserialize(req))
-                        response = DatabaseResponses.GetAccountLoggedIn(
-                            logged_in=cls.get_account_logged_in(
-                                account=request.get_account()
-                            )
-                        )
-                    case DatabaseOpcode.GET_ACCOUNTS:
-                        request = (DatabaseRequests.GetAccounts
-                                    .deserialize(req))
-                        response = DatabaseResponses.GetAccounts(
-                            accounts=cls.get_accounts()
-                        )
-                    case DatabaseOpcode.GET_MESSAGES:
-                        request = (DatabaseRequests.GetMessages
-                                    .deserialize(req))
-                        response = DatabaseResponses.GetMessages(
-                            messages=cls.get_messages(
-                                account=request.get_account(),
-                                logged_in=request.get_logged_in()
-                            )
-                        )
-                    case DatabaseOpcode.HAS_ACCOUNT:
-                        request = (DatabaseRequests.HasAccount
-                                    .deserialize(req))
-                        response = DatabaseResponses.HasAccount(
-                            has_account=cls.has_account(
-                                account=request.get_account()
-                            )
-                        )
-                    case DatabaseOpcode.UPSERT_ACCOUNT:
-                        request = (DatabaseRequests.UpsertAccount
-                                    .deserialize(req))
-                        cls.upsert_account(account=request.get_account())
-                        response = DatabaseResponses.UpsertAccount
-                    case DatabaseOpcode.UPSERT_MESSAGE:
-                        request = (DatabaseRequests.UpsertMessage
-                                    .deserialize(req))
-                        cls.upsert_message(message=request.get_message())
-                        response = DatabaseResponses.UpsertMessage
-                connection.sendall(response.serialize())
+                    cls.machines_down[other_machine_id] = True
 
         def handle_sync_connection(other_machine_id, connection):
-            while True:
-                req = connection.recv(1024).decode('utf-8')
+            try:
+                while True:
+                    req = connection.recv(1024)
+                    if len(req) == 0:
+                        break
+                    request = DatabaseRequests.SyncData.deserialize(req)
+                    with cls.machine_lock:
+                        cls._accounts = {}
+                        cls._messages = {}
+
+                        for account in request.get_accounts():
+                            cls.local_upsert_account(account)
+                        for message in request.get_messages():
+                            cls.local_upsert_message(message)
+
+                        cls.persist_accounts()
+                        cls.persist_messages()
+                    connection.sendall(b'')
+            except:
+                pass
+            finally:
                 with cls.machine_lock:
-                    print('rec', req)
-                    accounts_string, messages_string = req.split("|")
-                    cls.persist_accounts(accounts_string) # TODO: in-memory
-                    cls.persist_messages(messages_string) # TODO: in-memory
+                    cls.machines_down[other_machine_id] = True
 
         listener_threads = ([Thread(target=handle_queue_connection,
                                     args=[id, conn])
@@ -325,44 +344,53 @@ class Database(object):
     def messages_file_name(cls):
         return "messages" + str(cls.machine_id) + ".txt"
 
-    # MUST HOLD machine_lock
     @classmethod
-    def accounts_to_string(cls):
-        results = []
-        for account in cls._accounts.values():
-            values = []
-            values.append("1" if account.get_logged_in() else "0")
-            values.append(account.get_username())
-            results.append(",".join(values))
-        return '\n'.join(results)
+    def deserialize_accounts(cls, data: bytes):
+        return SerializationUtils.deserialize_list(
+            data,
+            Account.deserialize,
+            lambda v: v.serialize()
+        )
 
     # MUST HOLD machine_lock
     @classmethod
-    def persist_accounts(cls, string=None):
-        with open(cls.accounts_file_name(), "w+") as file:
-            file.write(string if string is not None else cls.accounts_to_string())
+    def serialize_accounts(cls):
+        return SerializationUtils.serialize_list(
+            [v for v in cls._accounts.values()],
+            lambda v: v.serialize()
+        )
 
     # MUST HOLD machine_lock
     @classmethod
-    def messages_to_string(cls):
-        results = []
-        for messages in cls._messages.values():
-            for message in messages:
-                values = []
-                values.append("1" if message.get_delivered() else "0")
-                values.append(message.get_message())
-                values.append("1" if message.get_recipient_logged_in() else "0")
-                values.append(message.get_recipient_username())
-                values.append(message.get_sender_username())
-                values.append(str(message.get_time()))
-                results.append(",".join(values))
-        return '\n'.join(results)
+    def persist_accounts(cls):
+        if len(cls._accounts) == 0:
+            return
+        with open(cls.accounts_file_name(), "wb+") as file:
+            file.write(cls.serialize_accounts())
+
+    @classmethod
+    def deserialize_messages(cls, data: bytes):
+        return SerializationUtils.deserialize_list(
+            data,
+            Message.deserialize,
+            lambda v: v.serialize()
+        )
 
     # MUST HOLD machine_lock
     @classmethod
-    def persist_messages(cls, string=None):
-        with open(cls.messages_file_name(), "w+") as file:
-            file.write(string if string is not None else cls.messages_to_string())
+    def serialize_messages(cls):
+        return SerializationUtils.serialize_list(
+            [vv for v in cls._messages.values() for vv in v],
+            lambda v: v.serialize()
+        )
+
+    # MUST HOLD machine_lock
+    @classmethod
+    def persist_messages(cls):
+        if len(cls._messages) == 0:
+            return
+        with open(cls.messages_file_name(), "wb+") as file:
+            file.write(cls.serialize_messages())
 
     # MUST HOLD machine_lock
     @classmethod
@@ -396,11 +424,11 @@ class Database(object):
         replicas = cls.get_replicas()
         for replica in replicas:
             try:
-                s = cls.accounts_to_string()
-                s += "|"
-                s += cls.messages_to_string()
-                print('send', s)
-                cls.sync_sockets[replica].sendall(s.encode('utf-8'))
+                request = DatabaseRequests.SyncData(
+                    accounts=[v for v in cls._accounts.values()],
+                    messages=[vv for v in cls._messages.values() for vv in v]
+                )
+                cls.sync_sockets[replica].sendall(request.serialize())
             except TimeoutError:
                 cls.machines_down[replica] = True
 
@@ -441,16 +469,17 @@ class Database(object):
                 )
             case DatabaseOpcode.UPSERT_MESSAGE:
                 request = DatabaseRequests.UpsertMessage(
-                    message=message
+                    the_message=message
                 )
         try:
             cls.queue_sockets[master_id].sendall(request.serialize())
-            response = cls.queue_connections[master_id].recv(1024)
+            response = cls.queue_sockets[master_id].recv(1024)
         except TimeoutError:
             cls.machines_down[cls.get_master_id()] = True
             match opcode:
                 case DatabaseOpcode.DELETE_ACCOUNT:
-                    return cls.delete_account(account=account)
+                    cls.delete_account(account=account)
+                    return
                 case DatabaseOpcode.DELETE_ALL:
                     cls.delete_all()
                     return
@@ -476,9 +505,10 @@ class Database(object):
                         .deserialize(response)
                         .get_logged_in())
             case DatabaseOpcode.GET_ACCOUNTS:
-                return (DatabaseResponses.GetAccounts
-                        .deserialize(response)
-                        .get_accounts())
+                return {account.get_username(): account
+                        for account in (DatabaseResponses.GetAccounts
+                                        .deserialize(response)
+                                        .get_accounts())}
             case DatabaseOpcode.GET_MESSAGES:
                 return (DatabaseResponses.GetMessages
                         .deserialize(response)
@@ -497,12 +527,17 @@ class Database(object):
         """
         with cls.machine_lock:
             if cls.is_master():
-                cls._accounts[account.get_username()] = account
+                cls.local_upsert_account(account)
                 cls.persist_accounts()
                 cls.sync_with_replicas()
             else:
                 return cls.proxy(DatabaseOpcode.UPSERT_ACCOUNT, 
                                  account=account)
+
+    # MUST HOLD machine_lock
+    @classmethod
+    def local_upsert_account(cls, account: Account):
+        cls._accounts[account.get_username()] = account
 
     @classmethod
     def get_accounts(cls):
@@ -544,31 +579,36 @@ class Database(object):
         """
         with cls.machine_lock:
             if cls.is_master():
-                username = message.get_recipient_username()
-                if username not in cls._messages:
-                    cls._messages[username] = []
-                messages = cls._messages[username]
-                if message.get_delivered():
-                    message.set_delivered(False)
-                    idx = None
-                    for i, msg in enumerate(messages):
-                        if msg == message:
-                            idx = i
-                            break
-                    if idx is not None:
-                        messages[idx].set_delivered(True)
-                    else:
-                        message.set_delivered(True)
-                        messages.append(message)
-                else:
-                    messages.append(message)
-                messages.sort(key=lambda m: m.get_time())
-                cls._messages[username] = messages
+                cls.local_upsert_message(message)
                 cls.persist_messages()
                 cls.sync_with_replicas()
             else:
                 return cls.proxy(DatabaseOpcode.UPSERT_MESSAGE, 
                                  message=message)
+
+    # MUST HOLD machine_lock
+    @classmethod
+    def local_upsert_message(cls, message: Message):
+        username = message.get_recipient_username()
+        if username not in cls._messages:
+            cls._messages[username] = []
+        messages = cls._messages[username]
+        if message.get_delivered():
+            message.set_delivered(False)
+            idx = None
+            for i, msg in enumerate(messages):
+                if msg == message:
+                    idx = i
+                    break
+            if idx is not None:
+                messages[idx].set_delivered(True)
+            else:
+                message.set_delivered(True)
+                messages.append(message)
+        else:
+            messages.append(message)
+        messages.sort(key=lambda m: m.get_time())
+        cls._messages[username] = messages
 
     @classmethod
     def get_messages(cls, account: Account, logged_in: bool):

@@ -78,7 +78,7 @@ class SerializationUtils:
     def deserialize_list(data: bytes,
                          item_deserialize: Callable,
                          item_serialize: Callable,
-                         remain: Optional[int] = None) -> bytes:
+                         remain: Optional[int] = None) -> list:
         """Deserialize `bytes` into a `list` using some explicit item
             (de)serialization. First few `bytes` are the length of the `list`,
             then we use `item_deserialize` to get each item, figure out how

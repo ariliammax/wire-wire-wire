@@ -4,9 +4,9 @@
 # Useful configuration constants throughout the codebase.
 class Config:
     ADDRESSES = [
-        ("127.0.0.1", 10020), # port should be a multiple of 10
-        ("127.0.0.1", 20020), # port should be a multiple of 10
-        ("127.0.0.1", 30020), # port should be a multiple of 10
+        ("127.0.0.1", 10010), # port should be a multiple of 10
+        ("127.0.0.1", 20010), # port should be a multiple of 10
+        ("127.0.0.1", 30010), # port should be a multiple of 10
     ]
     MAX_WORKERS = 10
     TIMEOUT_SYNC = 1
