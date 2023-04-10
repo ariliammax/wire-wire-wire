@@ -1,346 +1,229 @@
-# Design exercises: wire protocol
+# Design exercises: Replication
 ## Ari Troper, Liam McInroy, Max Snyder
 
-### 2023.02.13
+### 2023.04.07
 
 #### First notes
 
-Initial setup of project. We will be using `python`, since it will be readable
-to reviewers et al, makes setup easy on different environments thanks to
-`setuptools` and `pip` package management tools, and has `socket` a nice
-library for the wire protocol and `grpcio`
+Initial setup of project. We're continuing off of the
+[`wire`](https://github.com/ariliammax/wire) repo from the first design
+exercise. There's some implementation notes there, which we won't duplicate
+here for the most part, which are interesting.
 
-There's some organizational notes that we think will make the development
-process scale easier. Some of these (relating to the organization of the
-`git` branches) can be found in [`doc.md`](doc.md). The other follow from
-using `setuptools` to have different packages:
+One important note from that repo for the purposes of this exercise is:
 
-- All of the source is under the [`chat/`](chat/) folder.
+- there is a singleton `Database` instance in the non-replicated version.
+This exercise will make that persistent (we just write to a plain text file)
+and replicated (this will require some server communication).
 
-- Common code (not wire protocol or gRPC dependent, e.g. UI) may be found
-under the [`chat/common`](chat/common/) folder or the `chat.common` module.
+Our perspective is that this exercise is basically about implementing a
+distributed database, so we will just make the `Database` singleton have the
+ability to communicate to other servers. These servers will be behind the
+"trust boundary"; they will have their own socket connections to each other
+(rather than say, mimicking a replica as a "man in the middle" client, and
+implicitly trusting clients). Another nice implementation benefit of this
+decision is that it will limit any edits outside of the implementation of
+`Database`.
 
-- The wire protocol specific code is under the [`chat/wire`](chat/wire/)
-folder or the `chat.wire` module. This also has the subfolders and submodules
-of [`chat/wire/server`](chat/wire/server/) (`chat.wire.server` module?) and
-[`chat/wire/client`](chat/wire/client/) (`chat.wire.client` module?).
+There's now a bunch to unwind for the actual design, originating from this
+first decision. So strap in.
 
-- The gRPC specific code is under the [`chat/grpc`](chat/grpc/)
-folder or the `chat.grpc` module. This also has the subfolders and submodules
-of [`chat/grpc/server`](chat/grpc/server/) (`chat.grpc.server` module?) and
-[`chat/grpc/client`](chat/grpc/client/) (`chat.grpc.client` module?).
+#### Design of replication protocol
 
-- Eventually, tests will span both server and client within the `chat.wire`
-or `chat.grpc` modules (the tests will be on a single machine, _good enough_).
+- (i) We want 2-fault tolerance, and we only want to support up to fail-stop
+and crash failure; so three machines will suffice, and if a machine ever fails
+then we can safely assume it has failed for eternity (unless the entire system
+is restarted).
 
-#### Implementation / debugging notes
+On the second point: in the case of any failure, the other machines will
+communicate the failure and will ignore that machine for the remainder of
+eternity; since we are not dealing with byzantine failures, then we assume
+messages indicating another machine have failed will always be truthful.
 
-##### First socket (one-to-one)
+- (ii) Now, we will make the assertion that "correctness" is determined by the
+client; if any request by a client is given a response, then whatever
+data changes prerequisite to that response has been replicated across the
+system. As a simple example: a client says "send 'hi' to 'max'" then gets the
+response "ok"; all of the (non-failed) replicas have persisted the
+"'hi' to 'max'" message. As a more complicated example: the client sends a
+message, a replication fails, that machine is deemed failed by (i), but the
+replication still "succeeds" (in the sense that it is now 1-fault tolerant),
+and so the client still gets a request.
 
-Now for notes during implementation (we are focusing on the `chat.wire`
-module). We are making the design choice to use the `socket` package.
+The natural question is: when does a client get a failure? This will be
+answered in (iii).
 
-On the server:
+- (iii) We don't want to set up some complicated system to tell clients which
+replica to connect to, nor do we want a single intermediate machine which just
+"forwards" requests and response along to the replicas (that is now 0-fault
+tolerant if the intermediary fails). So we'll allow clients to directly connect
+to any replica they'd like.
 
-- `socket.socket.bind` creates the host (given a host IP and port)
+To answer the question of (ii): a client gets a failure when there is a failure
+of the replica which the client is connected to! This requires some client-side
+logic to then know to move onto a new replica.
 
-- `.listen()` starts listening for a client, `.accept` accepts it.
+NB: There is a chance the machine "fails" from the perspective of inside the
+trust boundary, so there might be "byzantine-esqe" behavior from the
+perspective of the client in this case. We will incorporate some logic
+inside of the trust boundary to tell a machine it's considered dead (so fail
+all responses to clients) to handle this case; see (TODO) for details.
 
-On the client:
+- With (i-iii), we have described all behavior relating to the outside
+of the trust boundary. In (iv) onwards, we will look at the design within the
+trust boundary.
 
-- `socket.socket.connect` connects to the host (given IP, port)
+- (iv) We would like the entire system to be a state machine. Any change in
+state is caused by a client connection (this is the only time the database will
+be modified). A modification of a database (on any replica) must trigger a
+synchronization across all of the replicas before a gesponse is given to the
+client by (ii).
 
-On both:
+Rather than implement some sort of complicated distributed consensus (paxos),
+we are opting for a "primary" replica which triggers the synchronizations to
+the "secondary" (or "tertiary") replicas.
 
-- `socket.connection.sendall` sends along the socket.
-It also requires a `bytes-like object`.
-So in the case of `str` the `b'...'` syntax will be helpful.
+- (v) Since any replica can receive database updates, but we want the "primary"
+replica to trigger the synchronization to the other replicas by (iv), then we
+will introduce a "queue" message for the non-primary replicas to send to the
+primary replica to indicate incoming database updates.
 
-- `socket.connection.recv` receives (given size of packet it is receiving).
+The primary replica in turn triggers "synchronization" messages to each of the
+non-primary replicas. Upon successful "synchronization", the primary replica
+will respond to the "queue" message, and the non-primary replica (which the
+client is connected to) may continue. This ensures that updates are atomic
+and transactional.
 
-##### Some networking troubles
+If the client is connected to the primary replica, then any database update
+simply triggers the "synchronization" step (we don't "queue" updates to the
+primary replica from the primary replica). To maintain the atomic and
+transactional updates, we add a lock to this step and the "queue" receiving.
 
-All of this so far works nicely on `localhost`, but when trying our public
-IP address then the server gets an `OSError: Can't assign requested address`
-during a `.bind`.
+This fully describes the replication process; we still need the 2-fault
+tolerance protocol.
 
-This seems to be a firewall issue on first guess, but supposedly the test
-machine's firewall is already off. But then it seemed like the public IP
-address had changed since we last checked it (head scratch moment).
-Things got more confusing when we got another IP that worked on a different
-project, and then we noticed the public IP changed again. Thanks, Harvard.
+- (vi) Suppose the primary replica fails; the non-primary replicas will observe
+this behavior by (i). Rather than implement a consensus algorithm (paxos) for
+which replica will become the new primary replica, we assume that every replica
+has access to both a "replica priority" ordering and the knowledge of its and
+other replica's names; this means there is a "secondary" and "tertiary"
+replica, and both replicas will know that the "secondary" replica becomes the
+primary replica if the original primary fails, and so on.
 
-After resetting the WiFi connection, the public IP stabilized, but same issue
-(the `OSError`), so that was all a big red herring. We also fiddled with
-other random ports (we'd been using 8080, 65432, maybe others?).
+A failure of the primary replica is observed by a failure of the "queueing"
+process; we don't need to check failures of the "syncing" messages, since a
+failure of these would cause a failure of the "queueing" message as well.
 
-So back to IPs, after searching for the error online more. Now, rather than
-using some other website, we run
+A failure of a non-primary replica is observed by the primary replica by a
+failure of the "syncing" messages. Then future "synchronizations" will not be
+sent to the failed non-primary replica from the primary replica. If the primary
+changes, this failure will be observed by the new primary as well by (i).
 
-```bash
-ipconfig getifaddr en0
-```
+A failure of any replica is observed by the client by any failure to respond.
+Upon such failures, the client will simply change its connection to another
+replica; it doesn't matter which other replica by (iii), and if that replica is
+failed then the next will be tried.
 
-then it worked on the test machine (with port 8080).
+- (vii) Since fail-stop failures are a subset of crash failures (and we aren't
+considering byzantine failures), we will define a "failure" as any failure of
+communication along a socket. We observe such failures by either (vii-a) an
+unexpected dropped connection, or (vii-b) a timeout of an expected response.
+In implementation, (vii-a) is observed a little differently than (vii-b), but
+for our purposes of this design specification, we'll consider requests to
+always be communicated so any error is observed as a timeout (it may just be
+observed instantly if the connection is dropped).
 
-So onto testing across machines, and it works nicely too.
+For convenience to represent the three kinds of messages, we use three sockets
+on each replica; for the client, queueing, and synchronization (there are
+actually five sockets; there are two queueing and synchronization sockets to
+clearly indicate which pair of replicas the socket is between). There
+may be failures at each level which dictate further behavior and communication.
+This means that (vii-1) with the (iii) interpretation that a client expects a
+failure only if the replica it is speaking to is dead, then the client timeout
+should be longest; (vii-2) the (vi) interpretation that a queue failure
+indicates a change in the primary replica, and then repeating behavior with the
+new primary replica that depends on the synchronization socket; so the queueing
+timeout should be longer than the synchronization but shorter than the client.
 
-###### Multiple connections
+We'll use an order of magnitude between each timeout.
 
-We need to accept multiple clients on the server. So the socket either
-can't block on accepting a connection until ending it, or we need some
-asynchronous code, or we need to poll, or...
+#### Design of persistence protocol
 
-We'll try not blocking first:
+Suppose now that replication is perfect (well, at least 2-fault tolerant).
+Persistence of a single replica is implicitly covered in (ii); once a replica
+is dead, it is dead to the other alive replicas. This doesn't implement
+"system-wide" persistence; i.e. we kill all of the replicas and then bring them
+back to life.
 
-- We found a `.setblocking(False)` flag we can set (after the `.listen`, since
-`.accept` blocks) so that the server can continue to listen for new
-connections -- at least supposedly. This wasn't working (with the error
-`Resource temporarily unavailable`), so we will try polling.
+As an example: suppose that two replicas fail (the first and second priority
+replicas, for instance). The third replica has the most up-to-date persisted
+data, so the system-wide "startup" should account for this. This is relatively
+easy to handle:
 
-Onto polling:
+- (viii) On all replicas "startup", the replicas communicate whether they were
+ever the primary. The lowest priority replica then communicates their locally
+persisted state to the primary replica (which in turn synchronizes it to the
+others). The system is not considered "alive" and won't accept client
+connections until this "startup" is concluded (the replicas will accept
+"synchronize" messages).
 
-- We get a `.connection` and `.address` from `.socket.accept`, so we'll
-keep polling for connections (with a timeout using `.socket.settimeout`).
+We are happy to make the assumption that a failure will not occur during the
+startup protocol, but it is an unnecessarily strong assumption; we assume only
+that the initial "I was primary or not" and "this was my last state" messages
+have no failures (if a synchronization fails after this part, this is handled
+in the replication protocol).
 
-- On accepting a connection, we'll start a new thread to handle that
-connection (`.recv`, `.send`/`.sendall`, etc.). When the connection ends,
-we'll terminate the thread. (Since sockets keep order, we won't have to worry
-about interweaving too, too much).
+#### Accumulative assumptions
 
-- We were prototyping without threading, but that got annoying on telling
-when/if clients disconnected. So we'll just do threading now.
+For the reader's sake, here are all of the crucial assumptions in the design
+of both the replication and persistence protocols.
 
-Now, it's Ari's turn to start scribing. ~ _LM_
+- (A1) The startup protocol from a well-formed state succeeds without failures,
+and this startup will terminate before client connections are requested.
+
+- (A2) Each replica knows its name, the addresses of the other replicas, and
+then may deduce their name and state. There is also a predetermined "primary
+priority" ordering on the names of replicas, so that replicas may deduce
+whether they should become primary when a new failure is observed. The clients
+also know the addresses of all replicas.
+
+- (A3) Failures are limited to crash failures, which may be observed by
+timeouts / disconnections on the sockets. To avoid byzantine failures, we
+assume all replicas are behind the trust boundary and may only communicate if
+they have not failed.
+
+- (A4) Failed replicas only come back to life on an entire system restart.
+
+With (A1-4), then (i-viii) ensure that the system is both 2-fault tolerant and
+persistent (to system-wide restarts).
+
+### 2023.04.08
+
+#### Implementation notes
+
+We're now to the implementing steps (which require much less explanation than
+the design notes).
+
+- Apparently. If you try to retry a `connection` on a `socket`, you must
+recreate a new instance of the `socket`, otherwise you some dumb error on
+retries. _Sigh_
+
+### 2023.04.09
+
+#### Implementation notes
+
+- We sometimes forgot whether to `sendall` on the `connection` or `socket`;
+this led to a bit of confusion for a little while.
+
+- Accidentally inverted the value of the `was_primary` booleans in the startup
+protocol... chaos insued.
+
+- There seems to be some instability in the startup protocol if there are
+not persisted data (or it is empty) and one or more of the was primary files
+is missing. Basically the forced sync of startup seems to be blocking.
+
+- There is some pain in trying to integration test, since our database
+singleton is really a class instance.
 
 ...
 
-Hey, Ari here!
-
-We were looking at the benefits/drawbacks of using processes vs. threads
-to handle multiple clients, in a non-blocking way. We decided to use
-threads, since that is more commonly used for server-client models and will
-allow us to easily access the shared server state without the use of a 
-socket or pipe, since threads are created in the same address space.
-
-One observation we made is that we don't have to keep track of the threads
-since the clients are stateless.
-
-After a little trial and error, we were succesfully able to achieve multiple 
-connections without blocking, using threads.
-
-Now we're deciding what to do next:
-
-- We understand there will have to be a shared state in the server that has to
-be 'locked'.
-
-- We are thinking of representing our database as global array of structs in
-memory.
-
-- We want to decide what our data structures are tonight.
-
-###### Shared resource testing
-
-We quickly want to test how multiple threads interact with a shared resource. 
-Liam suggested that in the past he's discovered, depending on the library, 
-threads might make copies of shared resources instead of accessing the same
-shared  resource... 
-
-Looks like this library does not make a copy, which is what we want!
-
-We're debating the differences between coarse grained and fine grained lock.
-We've decied that the granularity of the lock will depend on the action.
-
-_"That's all for now folks!"_ ~ _AT_
-
-#### Towards object, data models and the protocol
-
-We'd like to get an outline of our relevant (data, object) models, the
-operations, and the wire protocol. We recall the specification given:
-
-1. Create an account. You must supply a unique user name.
-
-2. List accounts (or a subset of the accounts, by text wildcard)
-
-3. Send a message to a recipient. If the recipient is logged in, deliver
-immediately; otherwise queue the message and deliver on demand.
-If the message is sent to someone who isn't a user, return an error message
-
-4. Deliver undelivered messages to a particular user.
-
-5. Delete an account. You will need to specify the semantics of what happens
-if you attempt to delete an account that contains undelivered message.
-
-##### Data models
-
-This is pretty simple, there's just two primitives, and these are their
-fields:
-
-1. `Account`: `username : str` (self explanatory), `logged_in : bool`,
-dictates whether sent messages are to be delivered immediately or not.
-
-After some debate, we don't include a `connection`, since the gRPC will not
-use exactly that (it's wire specific). We will eventually have an extension
-`WireAccount` that includes one (and similarly, perhaps a `gRPCAccount`.
-
-2. `Message`: `sender_username : str`, `recipient_username : str`,
-`message : str`, `time : int`, and `delivered : bool`.
-
-Not much to be said about that, except that `time` is a nice UI perk.
-Saying something would be a waste (this is a quine).
-
-Now, we will need object models. There was some debate whether we use the
-data models (and make attributes optional or not depending on whether the
-operation/object uses the field), or create different object models for each
-operation's request and response to clearly illustrate the specific wire
-protocol.
-
-For the sake of clarity, at the cost of verbosity, we opt to create separate
-models for each operation's request and response. So it will be useful to
-review the operations.
-
-###### Operations
-
-We replace the `Response` vs `Request` tedium with "gets" and "gives".
-
-1a. `CreateAccount`: gives `Account.username`, gets maybe error `str`.
-
-1b. `LogInAccount`: gives `Account.username`, gets maybe error `str`.
-
-Max has the point these are the same, but we decided it was most readable to
-disentangle them.
-
-2. `ListAccounts`: gives `str`, gets `[Account]`.
-
-3. `SendMessage`: gives `Message.` everything except `.time` and `.delivered`,
-gets maybe error `str`.
-
-4. `DeliverUndeliveredMessages`: gives `Account.username`, gets `[Message.`
-everything except `.delivered` `]`.
-
-5. `DeleteAccount`: gives `Account.username`, gets maybe error `str`.
-
-Liam will make nice auto-generating code for this and the data models, so
-it will be explicit but not verbose (and will make the overall wire protocol
-self contained hopefully).
-
-Our next steps will be actually building these object models,
-their (de)serialization, object to data transformations,
-a 'database' of the data models, and then the logic on both ends.
-
-The last one depends on the preceeding two, the penultimate doesn't depend
-on the object models. So Liam will do the autogenerating object models,
-Max and Ari will do the database, they will reconvene to do the other
-outstanding (de)serialization and logic on both ends later.
-
-Now it is Liam's bedtime.
-
-...
-
-### 2023.02.15
-
-Ari, here. Let's get a-rockin' !
-
-As a summary, this is what we have now re. functionality: 
-    - A client can connect to the server
-    - A client can make a request and the server will echo the request back
-    - We can also support multiple clients
-
-We want to start building out the 'database', the datastructures kept on the
-server. So 
-we're gonna begin by supporting client requests to create a User. The payload
-of the request 
-should include simply the username. 
-
-When the server gets the client's request, the server will add the message--
-the username--
-to a list of usernames.
-
-We want to prompt the client when it connects for a username, so we will use
-python's
-`input()` command.
-
-We decide to transition to using a set instead of a list so someone logging in
-with the same
-username will not create two copies of the username in the datastructure.
-
-Everything is working as expected, so now as we prepare to support more
-functions, we will
-start creating opcodes for the multiple operations. The opcodes will be one
-byte and
-represented as an enum.
-
-OK, now it's Max's turn to start scribin'
-
-_"See ya soon!"_ ~ _AT_
-
-...
-
-We are currently refactoring the code to be extensible to both parts I and II:
-I) Wire Protocol
-II) GRPC
-
-Even though serialization is different between parts I and II, some logic is
-shared:
-- On both clients, the read-execute-print-loop logic should behave similarly.
-- On both servers, database transactions should behave similarly.
-
-Every operation has its own:
-- argument types
-- database transaction
-- description
-- opcode
-- response types
-
-In both parts, we invert control to common code that is shared between them.
-
-_"Arf, she said."_ - Frank Zappa ~ _MS_
-
-### 2023.02.17
-
-Liam created an abstract `Model` factory for data and model objects. It also
-has (de)serialization. The one annoying thing is that the documentation
-looks like crap (since we dynamically set the attributes / autogenerate it).
-Oh well, no such thing as free lunch.
-
-### 2023.02.18
-
-Liam wanted to nest the autogenerated `grpcio` files into a folder, and
-`.gitignore` it. This made imports annoying (apparently `grpcio` assumes
-that everyone puts all source files in one directory, and can't imagine why
-any dev would do otherwise, since Google does it this way and so it must be the
-best. love googlers.). After some heartache and frustration, we just explicitly
-`.gitignore` `proto_*` or similar files. Not ideal, but whatever, it works.
-
-### 2023.02.20
-
-We have everything working, but there's some fine tuning to be done. Mainly
-just adding background polling for deliver on demand (not required but nice),
-maybe a nice UI for that (using maybe `curses`). But functionally everything
-is there, it's just polishing.
-
-### 2023.02.21
-
-The semantics of deleting an account containing undeliverered messages is that
-those messages are deleted. This is hidden in a comment, so now stating it
-explicitly.
-
-_"Arf, she said."_ - Frank Zappa ~ _MS_
-
-Apparently `pydoc` needs `__init__.py`s to discover packages. Annoying.
-- Liam
-
-### 2023.02.22
-
-Performance testing is annoying. It's best to disable the polling bg thread
-to avoid insanity. - Liam
-
-Functionality testing is nicely parameterized. We are mostly just testing the
-server endpoints, rather than the client, since it's _really_ annoying to
-simulate input (in our humble opinion), and also that's just QA, not coverage
-testing. That may be controversial, but that is the reality.
-
-Oh, also Ari made a `shiny` UI using `curses`. It is mostly much nicer, but
-there's some annoying things (i.e. after terminating the client, your tabs
-in your terminal will be all messed up for forever). So we have the option
-to use the boring or the `shiny` UI.

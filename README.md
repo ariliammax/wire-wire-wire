@@ -1,7 +1,7 @@
 # Setup and scripts
 
 All scripts mentioned in this document should be ran in the main directory
-(i.e. where you currently are, i.e. [wire/](./)).
+(i.e. where you currently are, i.e. [wire-wire-wire/](./)).
 
 ## Module installation and gRPC build
 
@@ -33,7 +33,7 @@ to just autogenerate the gRPC code.
 
 ## Configuring IP
 
-To get the IP address of the host, run
+To get the IP address of the hosts, run
 
 ```bash
 ipconfig getifaddr en0
@@ -45,11 +45,13 @@ To run the client / server using the wire protocol / gRPC, run
 
 ```bash
 python -m chat.[wire|grpc].[client|server].main \
-    [--host=HOST] \
-    [--port=PORT] \
+    [--id MACHINE_ID \
     [--verbose]   \
     [--shiny]
 ```
+
+- `id` is the identifier of the replica (0, 1, or 2). For the client, this
+will be the replica it tries first (defaults to 0).
 
 - `verbose` on a `server` will add logging output of packet sizes.
 
@@ -63,8 +65,7 @@ For wire, start the server with
 
 ```bash
 python -m chat.wire.server.main \
-    [--host=HOST] \
-    [--port=PORT] \
+    [--id MACHINE_ID]
     --verbose
 ```
 
@@ -75,36 +76,8 @@ For gRPC, start the server with
 GRPC_VERBOSITY=DEBUG \
     GRPC_TRACE=http \
     python -m chat.grpc.server.main \
-    [--host=HOST] \
-    [--port=PORT]
+    [--id MACHINE_ID]
 ```
-
-As a note on some packet sizes between the two
-
-| operation | wire | grpc | notes |
-| --------- | ---- | ---- | ----- |
-| log in request | 4B | 4B | username "hi" |
-| log in response | 2B | 0B |  |
-| create request | 4B | 4B | username "hi" |
-| create response | 2B | 0B |  |
-| list request | 2B | 0B | search "" |
-| list response | 7B | 8B | username "hi" and logged in byte |
-| send request | 10B | 12B | to "hi" from "hi" saying "hi" |
-| send response | 2B | 0B |  |
-| deliver request | 5B | 4B | for username "hi" |
-| deliver response | 20B | 22B | msg: to "hi" from "hi" saying "hi" |
-| ack request | 19B | 22B | ack: to "hi" from "hi" saying "hi" |
-| ack response | 2B | 0B |  |
-| log out request | 4B | 4B | username "hi" |
-| log out response | 2B | 0B |  |
-| delete request | 4B | 4B | username "hi" |
-| delete response | 2B | 0B |  |
-
-Some of the differences are because our wire protocol doesn't use `set` bits,
-for some decreases, but we also have to include `opcode`s which increase
-some request sizes, and we give an empty error on response rather than no
-response, which we have to encode the length of the empty string using some
-bytes.
 
 ## Linting
 
