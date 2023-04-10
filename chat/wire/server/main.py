@@ -15,6 +15,7 @@ from chat.common.models import (
     SendMessageRequest,
 )
 from chat.common.operations import Opcode
+from chat.common.server.database import Database
 from chat.common.server.events import Events, EventsRouter
 from typing import Optional
 
@@ -22,14 +23,14 @@ import socket
 import threading
 
 
-def entry(**kwargs):
+def entry(machine_id=0, addresses=Config.ADDRESSES, **kwargs):
     """Start the socket for the server.
     """
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.bind(Config.ADDRESSES[0])
+    s.bind(addresses[machine_id])
 
 
-def handle_connection(connection, **kwargs):
+def handle_connection(connection, database=Database, **kwargs):
     """The steady state of the server once a connection is established.
     """
     username = None
@@ -82,7 +83,7 @@ def handle_connection(connection, **kwargs):
                         request)
                     event_kwargs['messages'] = req.get_messages()
 
-            response = EventsRouter[opcode](**event_kwargs)
+            response = EventsRouter[opcode](database=database, **event_kwargs)
             res_packet = response.serialize()
 
             if kwargs.get('verbose', False):
@@ -105,12 +106,18 @@ def handler(err: Exception, s: Optional[socket.socket] = None, **kwargs):
     raise err
 
 
-def main(machine_id=0, **kwargs):
+def main(machine_id=0,
+         addresses=Config.ADDRESSES,
+         database=Database,
+         **kwargs):
     """Start a server and keep on listening.
     """
-    Events.startup(machine_id=machine_id)
+    Events.startup(machine_id=machine_id,
+                   addresses=addresses,
+                   database=database)
+    kwargs['database'] = database
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind(Config.ADDRESSES[machine_id])
+        s.bind(addresses[machine_id])
         s.listen()
         s.settimeout(Config.TIMEOUT_CLIENT)
         threads = []

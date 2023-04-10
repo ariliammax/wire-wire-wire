@@ -112,6 +112,8 @@ class Database(object):
     # key is recipient_username
     _messages: Dict[str, Message] = {}
 
+    addresses = Config.ADDRESSES
+
     machines_down: list = [False, False, False]
     machine_id: int = None
     machine_lock: Lock = Lock()
@@ -122,8 +124,10 @@ class Database(object):
     sync_connections: dict = {}
 
     @classmethod
-    def startup(cls, machine_id=0):
-        was_masters = [None, None, None]
+    def startup(cls, machine_id=0, addresses=Config.ADDRESSES):
+        cls.addresses = addresses
+
+        was_primarys = [None, None, None]
         with cls.machine_lock:
             cls.machine_id = machine_id
 
@@ -134,6 +138,9 @@ class Database(object):
                         cls.local_upsert_account(account)
             except FileNotFoundError:
                 pass
+            except:
+                # no content or some random deserialization error
+                pass
 
             try:
                 with open(cls.messages_file_name(), "rb") as file:
@@ -142,17 +149,20 @@ class Database(object):
                         cls.local_upsert_message(message)
             except FileNotFoundError:
                 pass
+            except:
+                # no content or some random deserialization error
+                pass
 
             try:
-                with open(cls.master_log_file_name(), "r") as file:
+                with open(cls.primary_log_file_name(), "r") as file:
                     content = file.readlines()
-                    was_master = content[0] == "1"
-                    was_masters[cls.machine_id] = was_master
+                    was_primary = content[0] == "1"
+                    was_primarys[cls.machine_id] = was_primary
             except FileNotFoundError:
-                was_master = False
-                was_masters[cls.machine_id] = was_master
+                was_primary = False
+                was_primarys[cls.machine_id] = was_primary
 
-            host, port = Config.ADDRESSES[machine_id]
+            host, port = cls.addresses[machine_id]
 
             port += 1 # original + 1
             queue_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -167,7 +177,7 @@ class Database(object):
             sync_socket.listen()
 
         def connect_to_queue(other_machine_id):
-            other_host, other_port = Config.ADDRESSES[other_machine_id]
+            other_host, other_port = cls.addresses[other_machine_id]
             other_port += 1
             while True:
                 try:
@@ -182,14 +192,14 @@ class Database(object):
                     pass
 
         def connect_to_sync(other_machine_id):
-            other_host, other_port = Config.ADDRESSES[other_machine_id]
+            other_host, other_port = cls.addresses[other_machine_id]
             other_port += 2
             while True:
                 try:
                     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                     s.settimeout(Config.TIMEOUT_SYNC)
                     s.connect((other_host, other_port))
-                    i = machine_id * 2 + int(was_masters[cls.machine_id])
+                    i = machine_id * 2 + int(was_primarys[cls.machine_id])
                     s.sendall(int.to_bytes(i, 1, byteorder='little'))
                     with cls.machine_lock:
                         cls.sync_sockets[other_machine_id] = s
@@ -202,6 +212,8 @@ class Database(object):
                 try:
                     connection, _ = queue_socket.accept()
                     request = connection.recv(1024)
+                    if len(request) == 0:
+                        continue
                     other_machine_id = int.from_bytes(request, byteorder='little')
                     with cls.machine_lock:
                         cls.queue_connections[other_machine_id] = connection
@@ -214,11 +226,13 @@ class Database(object):
                 try:
                     connection, _ = sync_socket.accept()
                     request = connection.recv(1024)
+                    if len(request) == 0:
+                        continue
                     i = int.from_bytes(request, byteorder='little')
                     other_machine_id = i // 2
-                    other_was_master = i % 2 == 1
+                    other_was_primary = i % 2 == 1
                     with cls.machine_lock:
-                        was_masters[other_machine_id] = other_was_master
+                        was_primarys[other_machine_id] = other_was_primary
                         cls.sync_connections[other_machine_id] = connection
                     break
                 except:
@@ -248,12 +262,12 @@ class Database(object):
                     if len(req) == 0:
                         break
                     with cls.machine_lock:
-                        if not cls.is_master():
+                        if not cls.is_primary():
                             for i in range(len(cls.machines_down)):
                                 if i == cls.machine_id:
                                     break
                                 cls.machines_down[i] = True
-                                cls.persist_master_log()
+                                cls.persist_primary_log()
                     opcode = DatabaseOpcode(BaseRequest.peek_opcode(req))
                     request = None
                     response = None
@@ -315,7 +329,7 @@ class Database(object):
             finally:
                 with cls.machine_lock:
                     cls.machines_down[other_machine_id] = True
-                    cls.persist_master_log()
+                    cls.persist_primary_log()
 
         def handle_sync_connection(other_machine_id, connection):
             try:
@@ -341,7 +355,7 @@ class Database(object):
             finally:
                 with cls.machine_lock:
                     cls.machines_down[other_machine_id] = True
-                    cls.persist_master_log()
+                    cls.persist_primary_log()
 
         listener_threads = ([Thread(target=handle_queue_connection,
                                     args=[id, conn])
@@ -354,15 +368,15 @@ class Database(object):
             thread.start()
 
         with cls.machine_lock:
-            old_master = None
+            old_primary = None
             for i in range(len(cls.machines_down)):
-                if was_masters[i]:
-                    old_master = i
-            if old_master is not None and old_master == cls.machine_id:
+                if was_primarys[i]:
+                    old_primary = i
+            if old_primary is not None and old_primary == cls.machine_id:
                 for i in range(len(cls.machines_down)):
                     if i != cls.machine_id:
                         cls.sync(i)
-            cls.persist_master_log()
+            cls.persist_primary_log()
 
     @classmethod
     def accounts_file_name(cls):
@@ -373,7 +387,7 @@ class Database(object):
         return "messages" + str(cls.machine_id) + ".txt"
 
     @classmethod
-    def master_log_file_name(cls):
+    def primary_log_file_name(cls):
         return "primary" + str(cls.machine_id) + ".txt"
 
     @classmethod
@@ -426,13 +440,13 @@ class Database(object):
 
     # MUST HOLD machine_lock
     @classmethod
-    def persist_master_log(cls):
-        with open(cls.master_log_file_name(), "w+") as file:
-            file.write("1" if cls.is_master() else "0")
+    def persist_primary_log(cls):
+        with open(cls.primary_log_file_name(), "w+") as file:
+            file.write("1" if cls.is_primary() else "0")
 
     # MUST HOLD machine_lock
     @classmethod
-    def get_master_id(cls):
+    def get_primary_id(cls):
         for i in range(len(cls.machines_down)):
             if not cls.machines_down[i]:
                 return i
@@ -440,18 +454,18 @@ class Database(object):
 
     # MUST HOLD machine_lock
     @classmethod
-    def is_master(cls):
-        return cls.get_master_id() == cls.machine_id
+    def is_primary(cls):
+        return cls.get_primary_id() == cls.machine_id
 
     # MUST HOLD machine_lock
     @classmethod
     def get_replicas(cls):
-        skipped_master = False
+        skipped_primary = False
         replicas = []
         for i in range(len(cls.machines_down)):
             if not cls.machines_down[i]:
-                if not skipped_master:
-                    skipped_master = True
+                if not skipped_primary:
+                    skipped_primary = True
                 else:
                     replicas.append(i)
         return replicas
@@ -474,9 +488,9 @@ class Database(object):
         for other_machine_id in replicas:
             try:
                 cls.sync(other_machine_id)
-            except TimeoutError:
+            except:
                 cls.machines_down[other_machine_id] = True
-                cls.persist_master_log()
+                cls.persist_primary_log()
 
     # MUST HOLD machine_lock
     @classmethod
@@ -485,7 +499,7 @@ class Database(object):
               account=None,
               logged_in=None,
               message=None):
-        master_id = cls.get_master_id()
+        primary_id = cls.get_primary_id()
         request = None
         match opcode:
             case DatabaseOpcode.DELETE_ACCOUNT:
@@ -518,11 +532,13 @@ class Database(object):
                     the_message=message
                 )
         try:
-            cls.queue_sockets[master_id].sendall(request.serialize())
-            response = cls.queue_sockets[master_id].recv(1024)
-        except TimeoutError:
-            cls.machines_down[cls.get_master_id()] = True
-            cls.persist_master_log()
+            cls.queue_sockets[primary_id].sendall(request.serialize())
+            response = b''
+            while len(response) == 0:
+                response = cls.queue_sockets[primary_id].recv(1024)
+        except:
+            cls.machines_down[cls.get_primary_id()] = True
+            cls.persist_primary_log()
             match opcode:
                 case DatabaseOpcode.DELETE_ACCOUNT:
                     cls.delete_account(account=account)
@@ -573,7 +589,7 @@ class Database(object):
         """Update or insert an `Account`.
         """
         with cls.machine_lock:
-            if cls.is_master():
+            if cls.is_primary():
                 cls.local_upsert_account(account)
                 cls.persist_accounts()
                 cls.sync_with_replicas()
@@ -591,7 +607,7 @@ class Database(object):
         """Get the entire `_accounts` table...
         """
         with cls.machine_lock:
-            if cls.is_master():
+            if cls.is_primary():
                 return {k: v for k, v in cls._accounts.items()}
             else:
                 return cls.proxy(DatabaseOpcode.GET_ACCOUNTS)
@@ -601,7 +617,7 @@ class Database(object):
         """Get whether a particular `account` is logged in according to the db.
         """
         with cls.machine_lock:
-            if cls.is_master():
+            if cls.is_primary():
                 username = account.get_username()
                 if username in cls._accounts:
                     return cls._accounts[username].get_logged_in()
@@ -614,7 +630,7 @@ class Database(object):
         """See whether a particular `account` is in the db.
         """
         with cls.machine_lock:
-            if cls.is_master():
+            if cls.is_primary():
                 return account.get_username() in cls._accounts
             else:
                 return cls.proxy(DatabaseOpcode.HAS_ACCOUNT, 
@@ -625,7 +641,7 @@ class Database(object):
         """Update or insert a `Message`.
         """
         with cls.machine_lock:
-            if cls.is_master():
+            if cls.is_primary():
                 cls.local_upsert_message(message)
                 cls.persist_messages()
                 cls.sync_with_replicas()
@@ -662,7 +678,7 @@ class Database(object):
         """Get the `Message`s sent to the `Account`.
         """
         with cls.machine_lock:
-            if cls.is_master():
+            if cls.is_primary():
                 recipient_username = account.get_username()
                 if recipient_username not in cls._messages:
                     return []
@@ -680,7 +696,7 @@ class Database(object):
         """Delete an `Account`, and all `Message`s to it.
         """
         with cls.machine_lock:
-            if cls.is_master():
+            if cls.is_primary():
                 username = account.get_username()
                 cls._accounts.pop(username, None)
                 cls._messages.pop(username, None)
@@ -695,7 +711,7 @@ class Database(object):
     @classmethod
     def delete_all(cls):
         with cls.machine_lock:
-            if cls.is_master():
+            if cls.is_primary():
                 cls._accounts = {}
                 cls._messages = {}
                 cls.persist_accounts()

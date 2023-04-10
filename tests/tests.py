@@ -15,9 +15,10 @@ from chat.wire.client.main import (
 )
 from chat.wire.server.main import main as wire_server_main
 from enum import Enum
-from threading import Thread
+from threading import Thread, Lock
 from time import sleep
 
+import chat.common.server.database
 import pytest
 
 
@@ -30,30 +31,70 @@ class Chat(Enum):
 
 
 class TestData():
+    # multiple of 100
+    addresses = [('localhost', 10610),
+                 ('localhost', 20610),
+                 ('localhost', 30610)]
     message = "hi"
     username = "username"
     username2 = "username2"
 
 
-def start_client(chat: Chat, host="localhost", port=Config.ADDRESSES[0][1]):
+class TestDatabases():
+    def db_from_id(machine_id):
+        class impl_db(Database):
+            pass
+
+        impl_db._accounts = {}
+        impl_db._messages = {}
+        impl_db.addresses = [v for v in TestData.addresses]
+        impl_db.machines_down = [False, False, False]
+        impl_db.machine_id = machine_id
+        impl_db.machine_lock = Lock()
+        impl_db.queue_sockets = {}
+        impl_db.sync_sockets = {}
+        impl_db.queue_connections = {}
+        impl_db.sync_connections = {}
+
+        return impl_db
+
+    DBS = {Chat.GRPC: {0: db_from_id(0),
+                       1: db_from_id(1),
+                       2: db_from_id(2)},
+           Chat.WIRE: {0: db_from_id(0),
+                       1: db_from_id(1),
+                       2: db_from_id(2)}}
+
+
+def start_client(chat: Chat, machine_id=0):
     match chat:
         case Chat.GRPC:
-            return grpc_client_entry(host=host, port=port)
+            return grpc_client_entry(host=TestData.addresses[machine_id][0],
+                                        port=TestData.addresses[machine_id][1])
         case Chat.WIRE:
-            return wire_client_entry(host=host, port=port + 1)
+            return wire_client_entry(host=TestData.addresses[machine_id][0],
+                                        port=TestData.addresses[machine_id][1] + 10)
 
 
-def start_server(chat: Chat, host="localhost", port=Config.ADDRESSES[0][1]):
-    match chat:
+def start_server(chat_t: Chat,
+                 machine_id=0):
+    match chat_t:
         case Chat.GRPC:
-            grpc_server_main(port=port)
+            grpc_server_main(machine_id=machine_id,
+                             addresses=TestData.addresses,
+                             database=TestDatabases.DBS[chat_t][machine_id])
         case Chat.WIRE:
-            wire_server_main(host=host, port=port + 1)
+            wire_server_main(machine_id=machine_id,
+                             addresses=[(host, port + 10)
+                                        for host, port in TestData.addresses],
+                             database=TestDatabases.DBS[chat_t][machine_id])
 
 
-def start_server_thread(chat: Chat):
-    thread = Thread(target=start_server, args=[chat])
-    thread.daemon = True
+def start_server_thread(chat: Chat, machine_id=0):
+    thread = Thread(target=start_server,
+                     args=[chat],
+                     kwargs=dict(machine_id=machine_id)
+    )
     thread.start()
 
 
@@ -65,8 +106,8 @@ def request(chat: Chat, opcode: Opcode, **kwargs):
             return wire_client_request(opcode, **kwargs)
 
 
-def clean_between_tests():
-    Database.delete_all()
+def clean_between_tests(chat, machine_id):
+    TestDatabases.DBS[chat][machine_id].delete_all()
 
 
 def create_account(chat: Chat, username: str = None, **kwargs):
@@ -131,165 +172,179 @@ def log_out_account(chat: Chat, username: str = None, **kwargs):
 
 @pytest.fixture(scope="session")
 def kwargs():
-    kwargs = {}
-    for chat in [Chat.WIRE, Chat.GRPC]:
-        start_server_thread(chat)
-        sleep(0.1)
-        kwargs.update(start_client(chat))
+    kwargs = []
+    for machine_id in range(3):
+        for chat in [Chat.WIRE]:
+            start_server_thread(chat, machine_id=machine_id)
+    sleep(1)
+    for machine_id in range(3):
+        kwargs.append({})
+        for chat in [Chat.WIRE]:
+            kwargs[machine_id].update(start_client(chat,
+                                                   machine_id=machine_id))
     return kwargs
 
 
-@pytest.mark.parametrize("chat", [Chat.WIRE, Chat.GRPC])
-def test_create_account_success(chat: Chat, kwargs):
-    clean_between_tests()
+@pytest.mark.parametrize("chat", [Chat.WIRE])
+@pytest.mark.parametrize("machine_id", range(3))
+def test_create_account_success(chat: Chat, machine_id: int, kwargs):
+    clean_between_tests(chat, machine_id)
 
-    response = create_account(chat, **kwargs)
+    response = create_account(chat, **kwargs[machine_id])
     assert (len(response.get_error()) == 0)
 
 
-@pytest.mark.parametrize("chat", [Chat.WIRE, Chat.GRPC])
-def test_create_account_error(chat: Chat, kwargs):
-    clean_between_tests()
-    create_account(chat, **kwargs)
+@pytest.mark.parametrize("chat", [Chat.WIRE])
+@pytest.mark.parametrize("machine_id", range(3))
+def test_create_account_error(chat: Chat, machine_id: int, kwargs):
+    clean_between_tests(chat, machine_id)
+    create_account(chat, **kwargs[0])
 
-    response = create_account(chat, **kwargs)
+    response = create_account(chat, **kwargs[0])
     assert (len(response.get_error()) != 0)
 
 
-@pytest.mark.parametrize("chat", [Chat.WIRE, Chat.GRPC])
-def test_log_in_account_success(chat: Chat, kwargs):
-    clean_between_tests()
-    create_account(chat, **kwargs)
+@pytest.mark.parametrize("chat", [Chat.WIRE])
+@pytest.mark.parametrize("machine_id", range(3))
+def test_log_in_account_success(chat: Chat, machine_id: int, kwargs):
+    clean_between_tests(chat, machine_id)
+    create_account(chat, **kwargs[0])
 
-    response = log_in_account(chat, **kwargs)
+    response = log_in_account(chat, **kwargs[0])
     assert (len(response.get_error()) == 0)
 
 
-@pytest.mark.parametrize("chat", [Chat.WIRE, Chat.GRPC])
-def test_log_in_account_error(chat: Chat, kwargs):
-    clean_between_tests()
+@pytest.mark.parametrize("chat", [Chat.WIRE])
+@pytest.mark.parametrize("machine_id", range(3))
+def test_log_in_account_error(chat: Chat, machine_id: int, kwargs):
+    clean_between_tests(chat, machine_id)
 
-    response = log_in_account(chat, **kwargs)
+    response = log_in_account(chat, **kwargs[0])
     assert (len(response.get_error()) != 0)
 
 
-@pytest.mark.parametrize("chat", [Chat.WIRE, Chat.GRPC])
-def test_list_accounts_success(chat: Chat, kwargs):
-    clean_between_tests()
-    create_account(chat, **kwargs)
+@pytest.mark.parametrize("chat", [Chat.WIRE])
+@pytest.mark.parametrize("machine_id", range(3))
+def test_list_accounts_success(chat: Chat, machine_id: int, kwargs):
+    clean_between_tests(chat, machine_id)
+    create_account(chat, **kwargs[0])
     account = Account(logged_in=True, username=TestData.username)
 
-    response = list_accounts(chat, "", **kwargs)
+    response = list_accounts(chat, "", **kwargs[0])
     assert (len(response.get_error()) == 0)
     assert (response.get_accounts() == [account])
 
-    response = list_accounts(chat, TestData.username[1:-1], **kwargs)
+    response = list_accounts(chat, TestData.username[1:-1], **kwargs[0])
     assert (len(response.get_error()) == 0)
     assert (response.get_accounts() == [account])
 
-    response = list_accounts(chat, TestData.username, **kwargs)
+    response = list_accounts(chat, TestData.username, **kwargs[0])
     assert (len(response.get_error()) == 0)
     assert (response.get_accounts() == [account])
 
-    clean_between_tests()
-    create_account(chat, **kwargs)
-    create_account(chat, username=TestData.username2, **kwargs)
+    clean_between_tests(chat, machine_id)
+    create_account(chat, **kwargs[0])
+    create_account(chat, username=TestData.username2, **kwargs[0])
     account2 = Account(logged_in=True, username=TestData.username2)
 
-    response = list_accounts(chat, "", **kwargs)
+    response = list_accounts(chat, "", **kwargs[0])
     assert (len(response.get_error()) == 0)
     assert (response.get_accounts() == [account, account2])
 
-    response = list_accounts(chat, TestData.username[1:-1], **kwargs)
+    response = list_accounts(chat, TestData.username[1:-1], **kwargs[0])
     assert (len(response.get_error()) == 0)
     assert (response.get_accounts() == [account, account2])
 
-    response = list_accounts(chat, TestData.username, **kwargs)
+    response = list_accounts(chat, TestData.username, **kwargs[0])
     assert (len(response.get_error()) == 0)
     assert (response.get_accounts() == [account, account2])
 
-    response = list_accounts(chat, TestData.username2, **kwargs)
+    response = list_accounts(chat, TestData.username2, **kwargs[0])
     assert (len(response.get_error()) == 0)
     assert (response.get_accounts() == [account2])
 
-    log_out_account(chat, username=TestData.username2, **kwargs)
+    log_out_account(chat, username=TestData.username2, **kwargs[0])
     account2.set_logged_in(False)
 
-    response = list_accounts(chat, "", **kwargs)
+    response = list_accounts(chat, "", **kwargs[0])
     assert (len(response.get_error()) == 0)
     assert (response.get_accounts() == [account, account2])
 
-    response = list_accounts(chat, TestData.username[1:-1], **kwargs)
+    response = list_accounts(chat, TestData.username[1:-1], **kwargs[0])
     assert (len(response.get_error()) == 0)
     assert (response.get_accounts() == [account, account2])
 
-    response = list_accounts(chat, TestData.username, **kwargs)
+    response = list_accounts(chat, TestData.username, **kwargs[0])
     assert (len(response.get_error()) == 0)
     assert (response.get_accounts() == [account, account2])
 
-    response = list_accounts(chat, TestData.username2, **kwargs)
+    response = list_accounts(chat, TestData.username2, **kwargs[0])
     assert (len(response.get_error()) == 0)
     assert (response.get_accounts() == [account2])
 
-    delete_account(chat, username=TestData.username2, **kwargs)
+    delete_account(chat, username=TestData.username2, **kwargs[0])
 
-    response = list_accounts(chat, "", **kwargs)
+    response = list_accounts(chat, "", **kwargs[0])
     assert (len(response.get_error()) == 0)
     assert (response.get_accounts() == [account])
 
-    response = list_accounts(chat, TestData.username[1:-1], **kwargs)
+    response = list_accounts(chat, TestData.username[1:-1], **kwargs[0])
     assert (len(response.get_error()) == 0)
     assert (response.get_accounts() == [account])
 
-    response = list_accounts(chat, TestData.username, **kwargs)
+    response = list_accounts(chat, TestData.username, **kwargs[0])
     assert (len(response.get_error()) == 0)
     assert (response.get_accounts() == [account])
 
 
-@pytest.mark.parametrize("chat", [Chat.WIRE, Chat.GRPC])
-def test_list_accounts_error(chat: Chat, kwargs):
-    clean_between_tests()
-    create_account(chat, **kwargs)
+@pytest.mark.parametrize("chat", [Chat.WIRE])
+@pytest.mark.parametrize("machine_id", range(3))
+def test_list_accounts_error(chat: Chat, machine_id: int, kwargs):
+    clean_between_tests(chat, machine_id)
+    create_account(chat, **kwargs[0])
 
-    response = list_accounts(chat, TestData.username2, **kwargs)
+    response = list_accounts(chat, TestData.username2, **kwargs[0])
     assert (len(response.get_accounts()) == 0)
 
 
-@pytest.mark.parametrize("chat", [Chat.WIRE, Chat.GRPC])
-def test_send_message_success(chat: Chat, kwargs):
-    clean_between_tests()
-    create_account(chat, **kwargs)
-    create_account(chat, username=TestData.username2, **kwargs)
+@pytest.mark.parametrize("chat", [Chat.WIRE])
+@pytest.mark.parametrize("machine_id", range(3))
+def test_send_message_success(chat: Chat, machine_id: int, kwargs):
+    clean_between_tests(chat, machine_id)
+    create_account(chat, **kwargs[0])
+    create_account(chat, username=TestData.username2, **kwargs[0])
 
     response = send_message(chat,
                             recipient_username=TestData.username,
                             message=TestData.message,
-                            **kwargs)
+                            **kwargs[0])
     assert (len(response.get_error()) == 0)
 
     response = send_message(chat,
                             recipient_username=TestData.username2,
                             message=TestData.message,
-                            **kwargs)
+                            **kwargs[0])
     assert (len(response.get_error()) == 0)
 
 
-@pytest.mark.parametrize("chat", [Chat.WIRE, Chat.GRPC])
-def test_send_message_error(chat: Chat, kwargs):
-    clean_between_tests()
-    create_account(chat, **kwargs)
+@pytest.mark.parametrize("chat", [Chat.WIRE])
+@pytest.mark.parametrize("machine_id", range(3))
+def test_send_message_error(chat: Chat, machine_id: int, kwargs):
+    clean_between_tests(chat, machine_id)
+    create_account(chat, **kwargs[0])
 
     response = send_message(chat,
                             recipient_username=TestData.username2,
                             message=TestData.message,
-                            **kwargs)
+                            **kwargs[0])
     assert (len(response.get_error()) != 0)
 
 
-@pytest.mark.parametrize("chat", [Chat.WIRE, Chat.GRPC])
-def test_deliver_undelivered_messages_success(chat: Chat, kwargs):
-    clean_between_tests()
-    create_account(chat, **kwargs)
+@pytest.mark.parametrize("chat", [Chat.WIRE])
+@pytest.mark.parametrize("machine_id", range(3))
+def test_deliver_undelivered_messages_success(chat: Chat, machine_id: int, kwargs):
+    clean_between_tests(chat, machine_id)
+    create_account(chat, **kwargs[0])
 
     message = (Message()
                .set_delivered(False)
@@ -302,10 +357,10 @@ def test_deliver_undelivered_messages_success(chat: Chat, kwargs):
     send_message(chat,
                  recipient_username=TestData.username,
                  message=TestData.message,
-                 **kwargs)
+                 **kwargs[0])
 
     response = deliver_undelivered_messages(chat,
-                                            **kwargs)
+                                            **kwargs[0])
 
     response_messages = response.get_messages()
 
@@ -318,46 +373,51 @@ def test_deliver_undelivered_messages_success(chat: Chat, kwargs):
     assert ([message] == response_messages)
 
 
-@pytest.mark.parametrize("chat", [Chat.WIRE, Chat.GRPC])
-def test_deliver_undelivered_messages_error(chat: Chat, kwargs):
-    clean_between_tests()
-    create_account(chat, **kwargs)
+@pytest.mark.parametrize("chat", [Chat.WIRE])
+@pytest.mark.parametrize("machine_id", range(3))
+def test_deliver_undelivered_messages_error(chat: Chat, machine_id: int, kwargs):
+    clean_between_tests(chat, machine_id)
+    create_account(chat, **kwargs[0])
 
     response = deliver_undelivered_messages(chat,
                                             username=TestData.username,
-                                            **kwargs)
+                                            **kwargs[0])
     assert (len(response.get_error()) != 0)
 
 
-@pytest.mark.parametrize("chat", [Chat.WIRE, Chat.GRPC])
-def test_delete_account_success(chat: Chat, kwargs):
-    clean_between_tests()
-    create_account(chat, **kwargs)
+@pytest.mark.parametrize("chat", [Chat.WIRE])
+@pytest.mark.parametrize("machine_id", range(3))
+def test_delete_account_success(chat: Chat, machine_id: int, kwargs):
+    clean_between_tests(chat, machine_id)
+    create_account(chat, **kwargs[0])
 
-    response = delete_account(chat, **kwargs)
+    response = delete_account(chat, **kwargs[0])
     assert (len(response.get_error()) == 0)
 
 
-@pytest.mark.parametrize("chat", [Chat.WIRE, Chat.GRPC])
-def test_delete_account_error(chat: Chat, kwargs):
-    clean_between_tests()
+@pytest.mark.parametrize("chat", [Chat.WIRE])
+@pytest.mark.parametrize("machine_id", range(3))
+def test_delete_account_error(chat: Chat, machine_id: int, kwargs):
+    clean_between_tests(chat, machine_id)
 
-    response = delete_account(chat, **kwargs)
+    response = delete_account(chat, **kwargs[0])
     assert (len(response.get_error()) != 0)
 
 
-@pytest.mark.parametrize("chat", [Chat.WIRE, Chat.GRPC])
-def test_log_out_account_success(chat: Chat, kwargs):
-    clean_between_tests()
-    create_account(chat, **kwargs)
+@pytest.mark.parametrize("chat", [Chat.WIRE])
+@pytest.mark.parametrize("machine_id", range(3))
+def test_log_out_account_success(chat: Chat, machine_id: int, kwargs):
+    clean_between_tests(chat, machine_id)
+    create_account(chat, **kwargs[0])
 
-    response = log_out_account(chat, **kwargs)
+    response = log_out_account(chat, **kwargs[0])
     assert (len(response.get_error()) == 0)
 
 
-@pytest.mark.parametrize("chat", [Chat.WIRE, Chat.GRPC])
-def test_log_out_account_error(chat: Chat, kwargs):
-    clean_between_tests()
+@pytest.mark.parametrize("chat", [Chat.WIRE])
+@pytest.mark.parametrize("machine_id", range(3))
+def test_log_out_account_error(chat: Chat, machine_id: int, kwargs):
+    clean_between_tests(chat, machine_id)
 
-    response = log_out_account(chat, **kwargs)
+    response = log_out_account(chat, **kwargs[0])
     assert (len(response.get_error()) != 0)

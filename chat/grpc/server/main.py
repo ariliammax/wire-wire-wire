@@ -4,6 +4,7 @@
 from chat.common.args import parse_server_args as parse_args
 from chat.common.config import Config
 from chat.common.models import Message
+from chat.common.server.database import Database
 from chat.common.server.events import Events
 from concurrent import futures
 
@@ -18,19 +19,23 @@ class ChatServicer(proto_pb2_grpc.ChatServicer):
         bothered to yet.
     """
 
-    def __init__(self, verbose=False, **kwargs):
+    def __init__(self, verbose=False, database=Database, **kwargs):
         self.verbose = verbose
+        self.database = database
 
     def LogInAccount(self, request, context):
-        response = Events.log_in_account(username=request.username)
+        response = Events.log_in_account(username=request.username,
+                                         database=self.database)
         return proto_pb2.LogInAccountResponse(error=response.get_error())
 
     def CreateAccount(self, request, context):
-        response = Events.create_account(username=request.username)
+        response = Events.create_account(username=request.username,
+                                         database=self.database)
         return proto_pb2.CreateAccountResponse(error=response.get_error())
 
     def ListAccounts(self, request, context):
-        response = Events.list_accounts(text_wildcard=request.text_wildcard)
+        response = Events.list_accounts(text_wildcard=request.text_wildcard,
+                                        database=self.database)
         return proto_pb2.ListAccountsResponse(
             error=response.get_error(),
             accounts=[proto_pb2.Account(logged_in=acc.get_logged_in(),
@@ -41,13 +46,15 @@ class ChatServicer(proto_pb2_grpc.ChatServicer):
         response = Events.send_message(
             message=request.message,
             recipient_username=request.recipient_username,
-            sender_username=request.sender_username)
+            sender_username=request.sender_username,
+            database=self.database)
         return proto_pb2.SendMessageResponse(error=response.get_error())
 
     def DeliverUndeliveredMessages(self, request, context):
         response = Events.deliver_undelivered_messages(
             logged_in=request.logged_in,
-            username=request.username)
+            username=request.username,
+            database=self.database)
         return proto_pb2.DeliverUndeliveredMessagesResponse(
             error=response.get_error(),
             messages=[proto_pb2.Message(message=msg
@@ -67,28 +74,34 @@ class ChatServicer(proto_pb2_grpc.ChatServicer):
     def AcknowledgeMessages(self, request, context):
         response = Events.acknowledge_messages(
             messages=[Message.from_grpc_model(msg)
-                      for msg in request.messages])
+                      for msg in request.messages],
+            database=self.database)
         return proto_pb2.AcknowledgeMessagesResponse(
             error=response.get_error())
 
     def DeleteAccount(self, request, context):
-        response = Events.delete_account(username=request.username)
+        response = Events.delete_account(username=request.username,
+                                         database=self.database)
         return proto_pb2.DeleteAccountResponse(error=response.get_error())
 
     def LogOutAccount(self, request, context):
-        response = Events.log_out_account(username=request.username)
+        response = Events.log_out_account(username=request.username,
+                                          database=self.database)
         return proto_pb2.LogOutAccountResponse(error=response.get_error())
 
 
-def main(machine_id=0, **kwargs):
+def main(machine_id=0, addresses=Config.ADDRESSES, database=Database, **kwargs):
     """Start a server and keep on listening.
     """
-    Events.startup(machine_id=machine_id)
+    Events.startup(machine_id=machine_id,
+                   addresses=addresses,
+                   database=database)
+    kwargs['database'] = database
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=Config
                                                     .MAX_WORKERS))
     proto_pb2_grpc.add_ChatServicer_to_server(ChatServicer(**kwargs),
                                               server)
-    server.add_insecure_port(f'[::]:{Config.ADDRESSES[machine_id][1]!s}')
+    server.add_insecure_port(f'[::]:{addresses[machine_id][1]!s}')
     server.start()
     server.wait_for_termination()
 
