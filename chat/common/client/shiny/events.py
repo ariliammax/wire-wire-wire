@@ -12,6 +12,7 @@ import curses
 
 
 timer = None
+username = None
 
 
 def initscr(**kwargs):
@@ -234,10 +235,11 @@ def main(entry: Callable,
        `handler` handles errors.
     """
     global timer
+    global username
     try:
         host, port = addresses[machine_id]
         kwargs = entry(host=host, port=port, **kwargs)
-        has_logged_in = False
+        has_logged_in = username is not None
         kwargs = initscr(**kwargs)
         initialize_curses(**kwargs)
 
