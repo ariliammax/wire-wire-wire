@@ -10,6 +10,7 @@ import threading
 
 
 timer = None
+username = None
 
 
 def print_messages(messages=None, **kwargs):
@@ -47,23 +48,28 @@ def poll(request: Callable = None, username: str = None, **kwargs):
     """Performs a regular `DeliverUndeliveredMessagesRequest` (followed by
         a `AcknowledgeMessagesRequest`.
     """
-    response = request(opcode=Opcode
-                       .DELIVER_UNDELIVERED_MESSAGES,
-                       logged_in=True,
-                       username=username,
-                       **kwargs)
-    if response.get_error() == '':
-        messages = response.get_messages()
+    try:
+        response = request(opcode=Opcode
+                        .DELIVER_UNDELIVERED_MESSAGES,
+                        logged_in=True,
+                        username=username,
+                        **kwargs)
+        if response.get_error() == '':
+            messages = response.get_messages()
 
-        # ack the messages
-        _ = request(opcode=Opcode
-                    .ACKNOWLEDGE_MESSAGES,
-                    messages=messages,
-                    **kwargs)
+            # ack the messages
+            _ = request(opcode=Opcode
+                        .ACKNOWLEDGE_MESSAGES,
+                        messages=messages,
+                        **kwargs)
 
-        print_messages(messages=messages)
+            print_messages(messages=messages)
 
-    create_poll(request=request, username=username, **kwargs)
+        create_poll(request=request, username=username, **kwargs)
+    except:
+        # server failed; time to switch.
+        # just don't start more polling. Wait for `main` to handle it.
+        pass
 
 
 def create_poll(request: Callable = None, username: str = None, **kwargs):
@@ -79,7 +85,12 @@ def create_poll(request: Callable = None, username: str = None, **kwargs):
     timer.start()
 
 
-def main(entry: Callable, request: Callable, handler: Callable, **kwargs):
+def main(entry: Callable,
+         request: Callable,
+         handler: Callable,
+         machine_id: int,
+         addresses: list,
+         **kwargs):
     """A nice (TM) generic way of handling the event logic shared by the wire
        and gRPC protocols.
        `entry` is called once at the beginning, to establish the connection
@@ -89,11 +100,17 @@ def main(entry: Callable, request: Callable, handler: Callable, **kwargs):
        `request` does requests across the connection,
        `handler` handles errors.
     """
+    global timer
+    global username
     try:
-        kwargs = entry(**kwargs)
-        has_logged_in = False
+        host, port = addresses[machine_id]
+        kwargs = entry(host=host, port=port, **kwargs)
+        has_logged_in = username is not None
 
-        print('\n""""""""""""""""""\nWELCOME TO CHATMAN\n""""""""""""""""""\n')
+        if username is None:
+            print('\n""""""""""""""""""\nWELCOME TO CHATMAN\n""""""""""""""""""\n')
+        else:
+            print()
 
         while not has_logged_in:
             print('Do you want to...\n'
@@ -216,6 +233,10 @@ def main(entry: Callable, request: Callable, handler: Callable, **kwargs):
 
     except Exception as err:
         handler(err=err, **kwargs)
+        new_machine_id = machine_id + 1
+        if new_machine_id >= len(addresses):
+            raise err
+        main(entry, request, handler, new_machine_id, addresses, **kwargs)
 
     if timer is not None:
         timer.cancel()

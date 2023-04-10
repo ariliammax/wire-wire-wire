@@ -101,27 +101,28 @@ def handler(err: Exception, s: Optional[socket.socket] = None, **kwargs):
     """Handle errors (i.e. close the socket connection).
     """
     if s is not None:
-        s.shutdown()
         s.close()
-    raise err
 
 
-def main(host=Config.ADDRESSES[0][0], port=Config.ADDRESSES[0][1], shiny=False, **kwargs):
+def main(addresses: list = Config.ADDRESSES,
+         machine_id: int = 0,
+         shiny=False,
+         **kwargs):
     """Start the client.
     """
     if shiny:
         shiny_client_main(entry=entry,
                           request=request,
                           handler=handler,
-                          host=host,
-                          port=port,
+                          machine_id=machine_id,
+                          addresses=addresses,
                           **kwargs)
     else:
         client_main(entry=entry,
                     request=request,
                     handler=handler,
-                    host=host,
-                    port=port,
+                    machine_id=machine_id,
+                    addresses=addresses,
                     **kwargs)
 
 

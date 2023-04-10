@@ -123,6 +123,7 @@ class Database(object):
 
     @classmethod
     def startup(cls, machine_id=0):
+        was_masters = [None, None, None]
         with cls.machine_lock:
             cls.machine_id = machine_id
 
@@ -141,6 +142,15 @@ class Database(object):
                         cls.local_upsert_message(message)
             except FileNotFoundError:
                 pass
+
+            try:
+                with open(cls.master_log_file_name(), "r") as file:
+                    content = file.readlines()
+                    was_master = content[0] == "1"
+                    was_masters[cls.machine_id] = was_master
+            except FileNotFoundError:
+                was_master = False
+                was_masters[cls.machine_id] = was_master
 
             host, port = Config.ADDRESSES[machine_id]
 
@@ -179,7 +189,8 @@ class Database(object):
                     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                     s.settimeout(Config.TIMEOUT_SYNC)
                     s.connect((other_host, other_port))
-                    s.sendall(int.to_bytes(machine_id, 1, byteorder='little'))
+                    i = machine_id * 2 + int(was_masters[cls.machine_id])
+                    s.sendall(int.to_bytes(i, 1, byteorder='little'))
                     with cls.machine_lock:
                         cls.sync_sockets[other_machine_id] = s
                     break
@@ -203,8 +214,11 @@ class Database(object):
                 try:
                     connection, _ = sync_socket.accept()
                     request = connection.recv(1024)
-                    other_machine_id = int.from_bytes(request, byteorder='little')
+                    i = int.from_bytes(request, byteorder='little')
+                    other_machine_id = i // 2
+                    other_was_master = i % 2 == 1
                     with cls.machine_lock:
+                        was_masters[other_machine_id] = other_was_master
                         cls.sync_connections[other_machine_id] = connection
                     break
                 except:
@@ -239,6 +253,7 @@ class Database(object):
                                 if i == cls.machine_id:
                                     break
                                 cls.machines_down[i] = True
+                                cls.persist_master_log()
                     opcode = DatabaseOpcode(BaseRequest.peek_opcode(req))
                     request = None
                     response = None
@@ -300,6 +315,7 @@ class Database(object):
             finally:
                 with cls.machine_lock:
                     cls.machines_down[other_machine_id] = True
+                    cls.persist_master_log()
 
         def handle_sync_connection(other_machine_id, connection):
             try:
@@ -325,6 +341,7 @@ class Database(object):
             finally:
                 with cls.machine_lock:
                     cls.machines_down[other_machine_id] = True
+                    cls.persist_master_log()
 
         listener_threads = ([Thread(target=handle_queue_connection,
                                     args=[id, conn])
@@ -336,6 +353,17 @@ class Database(object):
         for thread in listener_threads:
             thread.start()
 
+        with cls.machine_lock:
+            old_master = None
+            for i in range(len(cls.machines_down)):
+                if was_masters[i]:
+                    old_master = i
+            if old_master is not None and old_master == cls.machine_id:
+                for i in range(len(cls.machines_down)):
+                    if i != cls.machine_id:
+                        cls.sync(i)
+            cls.persist_master_log()
+
     @classmethod
     def accounts_file_name(cls):
         return "accounts" + str(cls.machine_id) + ".txt"
@@ -343,6 +371,10 @@ class Database(object):
     @classmethod
     def messages_file_name(cls):
         return "messages" + str(cls.machine_id) + ".txt"
+
+    @classmethod
+    def master_log_file_name(cls):
+        return "primary" + str(cls.machine_id) + ".txt"
 
     @classmethod
     def deserialize_accounts(cls, data: bytes):
@@ -394,6 +426,12 @@ class Database(object):
 
     # MUST HOLD machine_lock
     @classmethod
+    def persist_master_log(cls):
+        with open(cls.master_log_file_name(), "w+") as file:
+            file.write("1" if cls.is_master() else "0")
+
+    # MUST HOLD machine_lock
+    @classmethod
     def get_master_id(cls):
         for i in range(len(cls.machines_down)):
             if not cls.machines_down[i]:
@@ -420,17 +458,25 @@ class Database(object):
 
     # MUST HOLD machine_lock
     @classmethod
+    def sync(cls, other_machine_id):
+        if len(cls._accounts) == 0 and len(cls._messages) == 0:
+            return
+        request = DatabaseRequests.SyncData(
+            accounts=[v for v in cls._accounts.values()],
+            messages=[vv for v in cls._messages.values() for vv in v]
+        )
+        cls.sync_sockets[other_machine_id].sendall(request.serialize())
+
+    # MUST HOLD machine_lock
+    @classmethod
     def sync_with_replicas(cls):
         replicas = cls.get_replicas()
-        for replica in replicas:
+        for other_machine_id in replicas:
             try:
-                request = DatabaseRequests.SyncData(
-                    accounts=[v for v in cls._accounts.values()],
-                    messages=[vv for v in cls._messages.values() for vv in v]
-                )
-                cls.sync_sockets[replica].sendall(request.serialize())
+                cls.sync(other_machine_id)
             except TimeoutError:
-                cls.machines_down[replica] = True
+                cls.machines_down[other_machine_id] = True
+                cls.persist_master_log()
 
     # MUST HOLD machine_lock
     @classmethod
@@ -476,6 +522,7 @@ class Database(object):
             response = cls.queue_sockets[master_id].recv(1024)
         except TimeoutError:
             cls.machines_down[cls.get_master_id()] = True
+            cls.persist_master_log()
             match opcode:
                 case DatabaseOpcode.DELETE_ACCOUNT:
                     cls.delete_account(account=account)
