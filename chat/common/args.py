@@ -8,9 +8,13 @@ def make_parser():
     """Makes a parser for command line arguments (i.e. host and port).
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument('--host', type=str, required=False)
-    parser.add_argument('--port', type=int, required=False)
     parser.add_argument('--verbose', action='store_true')
+    parser.add_argument('--id',
+                        dest='machine_id',
+                        required=False,
+                        type=int,
+                        default=0,
+                        help='string saying this is the nth machine')
     return parser
 
 

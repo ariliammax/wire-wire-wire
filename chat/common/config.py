@@ -3,10 +3,15 @@
 
 # Useful configuration constants throughout the codebase.
 class Config:
-    HOST = "10.250.210.45"
+    ADDRESSES = [
+        ("127.0.0.1", 10010), # port should be a multiple of 10
+        ("127.0.0.1", 20010), # port should be a multiple of 10
+        ("127.0.0.1", 30010), # port should be a multiple of 10
+    ]
     MAX_WORKERS = 10
-    PORT = 8080
-    TIMEOUT = 1
+    TIMEOUT_SYNC = 1
+    TIMEOUT_QUEUE = 10
+    TIMEOUT_CLIENT = 100
     STR_MAX_LEN = 280
     LIST_MAX_LEN = 255
     INT_MAX_LEN = 1 << 64

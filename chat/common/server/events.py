@@ -28,6 +28,10 @@ class Events:
     """
 
     @staticmethod
+    def startup(machine_id=0):
+        Database.startup(machine_id=machine_id)
+
+    @staticmethod
     def log_in_account(username: str, **kwargs):
         """Logs an account in. Sends error if doesn't exist.
         """

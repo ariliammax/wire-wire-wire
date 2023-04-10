@@ -26,7 +26,7 @@ def entry(**kwargs):
     """Start the socket for the server.
     """
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.bind((Config.HOST, Config.PORT))
+    s.bind(Config.ADDRESSES[0])
 
 
 def handle_connection(connection, **kwargs):
@@ -45,7 +45,7 @@ def handle_connection(connection, **kwargs):
                 break
 
             event_kwargs = {}
-            opcode = BaseRequest.peek_opcode(request)
+            opcode = Opcode(BaseRequest.peek_opcode(request))
 
             if kwargs.get('verbose', False):
                 print(f'{opcode.name!s} request: {len(request)!s}B.')
@@ -105,18 +105,18 @@ def handler(err: Exception, s: Optional[socket.socket] = None, **kwargs):
     raise err
 
 
-def main(host=Config.HOST, port=Config.PORT, **kwargs):
+def main(machine_id=0, **kwargs):
     """Start a server and keep on listening.
     """
+    Events.startup(machine_id=machine_id)
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind((host, port))
+        s.bind(Config.ADDRESSES[machine_id])
         s.listen()
+        s.settimeout(Config.TIMEOUT_CLIENT)
         threads = []
         while True:
             try:
-                s.settimeout(Config.TIMEOUT)
                 connection, _ = s.accept()
-                s.settimeout(None)
                 thread = threading.Thread(target=handle_connection,
                                           args=[connection],
                                           kwargs=kwargs)
